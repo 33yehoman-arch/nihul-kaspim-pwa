@@ -1,0 +1,16 @@
+{
+  "name": "ניהול כספים אישי",
+  "short_name": "כספים",
+  "description": "מעקב הכנסות, הוצאות, שעות עבודה וחובות",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "dir": "rtl",
+  "lang": "he",
+  "background_color": "#0f1420",
+  "theme_color": "#0f1420",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

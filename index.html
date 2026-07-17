@@ -1,0 +1,1797 @@
+﻿<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#0f1420">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>ניהול כספים אישי</title>
+<style>
+  :root {
+    --bg: #0f1420;
+    --bg-alt: #161d2e;
+    --card: #1b2337;
+    --card-2: #212b42;
+    --border: #2c3752;
+    --text: #e8ecf5;
+    --text-dim: #9aa5bd;
+    --green: #34d399;
+    --green-bg: rgba(52,211,153,.12);
+    --red: #f87171;
+    --red-bg: rgba(248,113,113,.12);
+    --accent: #6366f1;
+    --accent-2: #818cf8;
+    --warn: #fbbf24;
+    --warn-bg: rgba(251,191,36,.14);
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', Arial, Tahoma, sans-serif;
+    min-height: 100vh;
+  }
+  body { padding-bottom: 0; }
+
+  .app-layout {
+    display: flex;
+    align-items: stretch;
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    width: 250px;
+    flex-shrink: 0;
+    background: var(--bg-alt);
+    border-inline-start: 1px solid var(--border);
+    padding: 24px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+
+  .main-content { flex: 1; min-width: 0; }
+  .container { max-width: 900px; margin: 0 auto; padding: 24px 16px 40px; }
+
+  header.app-header { text-align: center; }
+  header.app-header h1 {
+    margin: 0 0 6px;
+    font-size: 1.5rem;
+    background: linear-gradient(90deg, var(--accent-2), var(--green));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  header.app-header p { margin: 0; color: var(--text-dim); font-size: .85rem; }
+
+  .sidebar-footer {
+    margin-top: auto;
+    color: var(--text-dim);
+    font-size: .72rem;
+    line-height: 1.5;
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+  }
+
+  .banner {
+    background: var(--warn-bg);
+    border: 1px solid var(--warn);
+    color: var(--warn);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin: 0 0 16px;
+    display: none;
+  }
+  .banner.show { display: block; }
+  .banner h3 { margin: 0 0 8px; font-size: 1.05rem; }
+  .banner ul { margin: 6px 0 0; padding-inline-start: 20px; }
+  .banner .total { font-weight: 700; margin-top: 8px; }
+
+  nav.tabs {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  nav.tabs button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: none;
+    border: none;
+    border-inline-start: 3px solid transparent;
+    border-radius: 8px;
+    color: var(--text-dim);
+    padding: 11px 12px;
+    font-size: .95rem;
+    cursor: pointer;
+    white-space: nowrap;
+    text-align: start;
+    font-family: inherit;
+  }
+  nav.tabs button:hover { background: var(--card-2); }
+  nav.tabs button .icon { font-size: 1.1rem; }
+  nav.tabs button.active {
+    color: var(--text);
+    background: var(--card-2);
+    border-inline-start-color: var(--accent);
+    font-weight: 600;
+  }
+
+  @media (max-width: 860px) {
+    .app-layout { flex-direction: column; }
+    .sidebar {
+      width: 100%;
+      height: auto;
+      position: static;
+      flex-direction: row;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 14px;
+      border-inline-start: none;
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+    }
+    .sidebar-header, .sidebar-footer { display: none; }
+    nav.tabs { flex-direction: row; }
+    nav.tabs button { border-inline-start: none; border-bottom: 3px solid transparent; border-radius: 0; }
+    nav.tabs button.active { background: none; border-bottom-color: var(--accent); }
+    footer.app-footer { display: block; }
+  }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .card h2 { margin: 0 0 14px; font-size: 1.1rem; color: var(--accent-2); }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+    align-items: end;
+  }
+  label {
+    display: block;
+    font-size: .78rem;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  input, select, textarea {
+    width: 100%;
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 9px 10px;
+    border-radius: 8px;
+    font-size: .95rem;
+    font-family: inherit;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: .92rem;
+    cursor: pointer;
+    font-weight: 600;
+    font-family: inherit;
+  }
+  .btn:hover { background: var(--accent-2); }
+  .btn.secondary {
+    background: var(--card-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn.secondary:hover { background: var(--border); }
+  .btn.danger { background: var(--red); }
+  .btn.danger:hover { background: #ef4444; }
+  .btn.small { padding: 5px 10px; font-size: .8rem; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  .kind-switch {
+    display: flex;
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .kind-switch button {
+    flex: 1;
+    padding: 9px 0;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 600;
+  }
+  .kind-switch button.active.out { background: var(--red-bg); color: var(--red); }
+  .kind-switch button.active.in { background: var(--green-bg); color: var(--green); }
+
+  .list { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+  .row-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    gap: 10px;
+  }
+  .row-item .main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .row-item .main .amt { font-weight: 700; font-size: 1.02rem; }
+  .row-item .main .amt.in { color: var(--green); }
+  .row-item .main .amt.out { color: var(--red); }
+  .row-item .main .meta { font-size: .78rem; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row-item .actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+  .row-item.paid .main .amt,
+  .row-item.paid .main .meta { text-decoration: line-through; opacity: .55; }
+
+  .empty { color: var(--text-dim); font-size: .9rem; text-align: center; padding: 20px 0; }
+
+  .month-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+  .month-nav button {
+    background: var(--card-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.1rem;
+  }
+  .month-nav button:hover { background: var(--border); }
+  .month-nav h2 { margin: 0; min-width: 160px; text-align: center; font-size: 1.2rem; }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+  }
+  .stat {
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+  }
+  .stat .label { font-size: .78rem; color: var(--text-dim); margin-bottom: 6px; }
+  .stat .value { font-size: 1.3rem; font-weight: 700; }
+  .stat .value.green { color: var(--green); }
+  .stat .value.red { color: var(--red); }
+
+  .backup-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+
+  .folder-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-top: 10px;
+  }
+  .folder-card {
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+  }
+  .folder-card .folder-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .folder-card .folder-stats {
+    display: flex;
+    justify-content: space-between;
+    font-size: .85rem;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+  .folder-card .folder-entries {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: .8rem;
+    color: var(--text-dim);
+    border-top: 1px dashed var(--border);
+    padding-top: 8px;
+  }
+
+  @media (min-width: 861px) {
+    footer.app-footer { display: none; }
+  }
+  footer.app-footer {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: .78rem;
+    padding: 20px 0 0;
+  }
+
+  @media (max-width: 480px) {
+    header.app-header h1 { font-size: 1.3rem; }
+    .card { padding: 12px; }
+    nav.tabs button { padding: 8px 10px; font-size: .85rem; }
+  }
+
+  .progress-track {
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    height: 18px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    background: linear-gradient(90deg, var(--accent), var(--green));
+    height: 100%;
+    transition: width .3s;
+  }
+  .progress-fill.over-budget { background: linear-gradient(90deg, var(--red), #ef4444); }
+  .progress-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: .82rem;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+
+  .row-item.over-budget .main .amt { color: var(--red); }
+</style>
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <header class="app-header">
+        <h1>💰 ניהול כספים</h1>
+        <p>הכנסות, הוצאות, שעות וחובות</p>
+      </header>
+    </div>
+
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="tx"><span class="icon">💳</span> תנועות</button>
+      <button class="tab-btn" data-tab="hours"><span class="icon">⏱️</span> שעות עבודה</button>
+      <button class="tab-btn" data-tab="debts"><span class="icon">🤝</span> חובות</button>
+      <button class="tab-btn" data-tab="summary"><span class="icon">📊</span> סיכום חודשי</button>
+      <button class="tab-btn" data-tab="advanced"><span class="icon">🎯</span> תקציב וחיסכון</button>
+      <button class="tab-btn" data-tab="settings"><span class="icon">⚙️</span> גיבוי והתראות</button>
+    </nav>
+
+    <div class="sidebar-footer">
+      נתונים נשמרים מקומית בלבד<br>ללא שרת וללא אינטרנט
+    </div>
+  </aside>
+
+  <main class="main-content">
+  <div class="container">
+
+  <div id="reminderBanner" class="banner">
+    <h3>🔔 תזכורת ל-10 בחודש</h3>
+    <p>האנשים הבאים אמורים להעביר לך כסף:</p>
+    <ul id="reminderList"></ul>
+    <div class="total" id="reminderTotal"></div>
+  </div>
+
+  <div id="employerBanner" class="banner">
+    <h3>💼 תזכורת תשלום מהמעסיקים</h3>
+    <p>על החודש שעבר, הגורמים הבאים אמורים לשלם לך לפי השעות שנרשמו:</p>
+    <ul id="employerList"></ul>
+    <div class="total" id="employerTotal"></div>
+  </div>
+
+  <div class="card">
+    <h2>📈 מבט מהיר</h2>
+    <div class="stats-grid">
+      <div class="stat">
+        <div class="label">יתרה כוללת</div>
+        <div class="value" id="qsBalance">₪0</div>
+      </div>
+      <div class="stat">
+        <div class="label">הכנסות החודש</div>
+        <div class="value green" id="qsMonthIncome">₪0</div>
+      </div>
+      <div class="stat">
+        <div class="label">הוצאות החודש</div>
+        <div class="value red" id="qsMonthExpense">₪0</div>
+      </div>
+      <div class="stat">
+        <div class="label">חובות פתוחים</div>
+        <div class="value" id="qsOpenDebts">₪0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: תנועות -->
+  <section id="tab-tx" class="tab-content active">
+    <div class="card">
+      <h2>הוספת תנועה</h2>
+      <div class="kind-switch" id="txKindSwitch">
+        <button type="button" data-kind="out" class="active out">הוצאה</button>
+        <button type="button" data-kind="in" class="in">הכנסה</button>
+      </div>
+      <br>
+      <form id="txForm" class="form-grid">
+        <div>
+          <label>סכום (₪)</label>
+          <input type="number" id="txAmount" min="0.01" step="0.01" required placeholder="0.00">
+        </div>
+        <div>
+          <label>תיאור</label>
+          <input type="text" id="txDesc" placeholder="תיאור קצר">
+        </div>
+        <div>
+          <label>קטגוריה</label>
+          <select id="txCat"></select>
+        </div>
+        <div>
+          <label>תאריך</label>
+          <input type="date" id="txDate" required>
+        </div>
+        <div>
+          <button type="submit" class="btn" id="txSubmitBtn">הוסף תנועה</button>
+          <button type="button" class="btn secondary" id="txCancelEditBtn" style="display:none;">בטל עריכה</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>כל התנועות</h2>
+      <div class="form-grid" style="margin-bottom:14px;">
+        <div>
+          <label>חיפוש</label>
+          <input type="text" id="txFilterSearch" placeholder="חיפוש בתיאור/קטגוריה">
+        </div>
+        <div>
+          <label>קטגוריה</label>
+          <select id="txFilterCat"><option value="">הכל</option></select>
+        </div>
+        <div>
+          <label>מתאריך</label>
+          <input type="date" id="txFilterFrom">
+        </div>
+        <div>
+          <label>עד תאריך</label>
+          <input type="date" id="txFilterTo">
+        </div>
+        <div>
+          <button type="button" class="btn secondary" id="txFilterClear">נקה סינון</button>
+        </div>
+      </div>
+      <div class="list" id="txList"></div>
+    </div>
+  </section>
+
+  <!-- TAB: שעות עבודה -->
+  <section id="tab-hours" class="tab-content">
+    <div class="card">
+      <h2>הוספת שעות עבודה</h2>
+      <form id="hoursForm" class="form-grid">
+        <div>
+          <label>תאריך</label>
+          <input type="date" id="hDate" required>
+        </div>
+        <div>
+          <label>מספר שעות</label>
+          <input type="number" id="hHours" min="0.01" step="0.01" required placeholder="0">
+        </div>
+        <div>
+          <label>תעריף לשעה (₪)</label>
+          <input type="number" id="hRate" min="0.01" step="0.01" required placeholder="0">
+        </div>
+        <div>
+          <label>מקום / לקוח (רשות)</label>
+          <input type="text" id="hWhere" placeholder="">
+        </div>
+        <div>
+          <button type="submit" class="btn" id="hSubmitBtn">הוסף רישום</button>
+          <button type="button" class="btn secondary" id="hCancelEditBtn" style="display:none;">בטל עריכה</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>רישומי שעות</h2>
+      <div class="list" id="hoursList"></div>
+    </div>
+
+    <div class="card">
+      <div class="month-nav">
+        <button id="prevClientMonth">◀</button>
+        <h2 id="clientMonthTitle" style="margin:0;"></h2>
+        <button id="nextClientMonth">▶</button>
+      </div>
+      <p style="color:var(--text-dim); font-size:.85rem; margin-top:-8px;">
+        תיקייה לכל מקום/לקוח עם כל השעות שעבדת אצלו בחודש הנבחר. עם תחילת חודש חדש נפתחת תיקייה ריקה לכל לקוח,
+        אך התיקייה של החודש הקודם נשארת שמורה ונגישה דרך החיצים.
+      </p>
+      <div id="clientFolders"></div>
+    </div>
+  </section>
+
+  <!-- TAB: חובות -->
+  <section id="tab-debts" class="tab-content">
+    <div class="card">
+      <h2>הוספת חוב (מי חייב לך)</h2>
+      <form id="debtForm" class="form-grid">
+        <div>
+          <label>שם</label>
+          <input type="text" id="dName" required placeholder="שם">
+        </div>
+        <div>
+          <label>סכום (₪)</label>
+          <input type="number" id="dAmount" min="0.01" step="0.01" required placeholder="0.00">
+        </div>
+        <div>
+          <label>תאריך יעד (רשות)</label>
+          <input type="date" id="dDue">
+        </div>
+        <div>
+          <label>הערה (רשות)</label>
+          <input type="text" id="dNote" placeholder="">
+        </div>
+        <div>
+          <button type="submit" class="btn" id="dSubmitBtn">הוסף חוב</button>
+          <button type="button" class="btn secondary" id="dCancelEditBtn" style="display:none;">בטל עריכה</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>חובות פתוחים</h2>
+      <div class="list" id="debtOpenList"></div>
+    </div>
+
+    <div class="card">
+      <h2>חובות ששולמו</h2>
+      <div class="list" id="debtPaidList"></div>
+    </div>
+  </section>
+
+  <!-- TAB: סיכום חודשי -->
+  <section id="tab-summary" class="tab-content">
+    <div class="card">
+      <div class="month-nav">
+        <button id="prevMonth">◀</button>
+        <h2 id="monthTitle"></h2>
+        <button id="nextMonth">▶</button>
+      </div>
+      <div class="stats-grid">
+        <div class="stat">
+          <div class="label">סה"כ הכנסות</div>
+          <div class="value green" id="sumIncome">₪0</div>
+        </div>
+        <div class="stat">
+          <div class="label">סה"כ הוצאות</div>
+          <div class="value red" id="sumExpense">₪0</div>
+        </div>
+        <div class="stat">
+          <div class="label">מאזן</div>
+          <div class="value" id="sumBalance">₪0</div>
+        </div>
+        <div class="stat">
+          <div class="label">סה"כ שעות עבודה</div>
+          <div class="value" id="sumHours">0</div>
+        </div>
+        <div class="stat">
+          <div class="label">שכר מהשעות</div>
+          <div class="value" id="sumWage">₪0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🥧 פילוח הוצאות לפי קטגוריה (לחודש הנבחר)</h2>
+      <div class="list" id="categoryBreakdownList"></div>
+      <div style="max-width:320px; margin:16px auto 0;">
+        <canvas id="categoryChart"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>חובות פתוחים כרגע (לא לפי חודש)</h2>
+      <div class="stats-grid" style="margin-bottom:14px;">
+        <div class="stat">
+          <div class="label">סה"כ שחייבים לך</div>
+          <div class="value" id="sumDebtTotal">₪0</div>
+        </div>
+      </div>
+      <div class="list" id="sumDebtList"></div>
+    </div>
+  </section>
+
+  <!-- TAB: תקציב וחיסכון -->
+  <section id="tab-advanced" class="tab-content">
+    <div class="card">
+      <h2>🎯 תקציב חודשי לפי קטגוריה</h2>
+      <p style="color:var(--text-dim); font-size:.9rem;">הגדר תקרת הוצאה חודשית לכל קטגוריה (השאר ריק = ללא הגבלה). ההתקדמות מוצגת בטאב "סיכום חודשי".</p>
+      <div class="form-grid" id="budgetInputs"></div>
+      <div class="backup-actions">
+        <button type="button" class="btn" id="saveBudgetsBtn">💾 שמור תקציבים</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🔁 הוצאות/הכנסות קבועות</h2>
+      <p style="color:var(--text-dim); font-size:.9rem;">רשומות אלה יתווספו אוטומטית כתנועה בכל חודש, בפעם הראשונה שפותחים את האפליקציה באותו חודש.</p>
+      <div class="kind-switch" id="recKindSwitch">
+        <button type="button" data-kind="out" class="active out">הוצאה</button>
+        <button type="button" data-kind="in" class="in">הכנסה</button>
+      </div>
+      <br>
+      <form id="recurringForm" class="form-grid">
+        <div>
+          <label>סכום (₪)</label>
+          <input type="number" id="recAmount" min="0.01" step="0.01" required placeholder="0.00">
+        </div>
+        <div>
+          <label>תיאור</label>
+          <input type="text" id="recDesc" placeholder="לדוגמה: שכירות">
+        </div>
+        <div>
+          <label>קטגוריה</label>
+          <select id="recCat"></select>
+        </div>
+        <div>
+          <label>יום בחודש (1-28)</label>
+          <input type="number" id="recDay" min="1" max="28" required placeholder="1">
+        </div>
+        <div>
+          <button type="submit" class="btn">הוסף רשומה קבועה</button>
+        </div>
+      </form>
+      <div class="list" id="recurringList"></div>
+    </div>
+
+    <div class="card">
+      <h2>💎 יעד חיסכון</h2>
+      <div class="form-grid">
+        <div>
+          <label>סכום יעד (₪)</label>
+          <input type="number" id="savingsTarget" min="0" step="1" placeholder="0">
+        </div>
+        <div>
+          <button type="button" class="btn secondary" id="saveSavingsTargetBtn">שמור יעד</button>
+        </div>
+      </div>
+      <div style="margin-top:16px;">
+        <div class="progress-labels">
+          <span id="savingsCurrentLabel">נחסך: ₪0</span>
+          <span id="savingsTargetLabel">מתוך ₪0</span>
+        </div>
+        <div class="progress-track">
+          <div id="savingsProgressBar" class="progress-fill" style="width:0%;"></div>
+        </div>
+      </div>
+      <div class="form-grid" style="margin-top:16px;">
+        <div>
+          <label>סכום להוספה/משיכה (₪)</label>
+          <input type="number" id="savingsAddAmount" min="0.01" step="0.01" placeholder="0.00">
+        </div>
+        <div>
+          <button type="button" class="btn" id="savingsAddBtn">➕ הוסף לחיסכון</button>
+        </div>
+        <div>
+          <button type="button" class="btn secondary" id="savingsWithdrawBtn">➖ משיכה מהחיסכון</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB: גיבוי -->
+  <section id="tab-settings" class="tab-content">
+    <div class="card">
+      <h2>גיבוי ושחזור נתונים</h2>
+      <p style="color:var(--text-dim); font-size:.9rem;">כל הנתונים נשמרים במכשיר שלך בלבד (localStorage). מומלץ לייצא גיבוי מדי פעם.</p>
+      <div class="backup-actions">
+        <button class="btn" id="exportBtn">📤 ייצוא גיבוי (JSON)</button>
+        <button class="btn secondary" id="importBtn">📥 שחזור מגיבוי</button>
+        <input type="file" id="importFile" accept="application/json" style="display:none;">
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>התראות (PWA)</h2>
+      <p style="color:var(--text-dim); font-size:.9rem;">
+        אם האפליקציה מותקנת כ-PWA (מוגשת דרך שרת/HTTPS ולא נפתחת כקובץ ישירות),
+        ניתן לאפשר התראות כדי לקבל תזכורת על חובות פתוחים בין ה-8 ל-15 לחודש.
+        התראה ברקע כשהאפליקציה סגורה תלויה בתמיכת הדפדפן/המכשיר ואינה מובטחת להגיע בדיוק ב-10 לחודש.
+      </p>
+      <div class="backup-actions">
+        <button class="btn" id="enableNotifBtn">🔔 אפשר התראות</button>
+        <span id="notifStatus" style="color:var(--text-dim); font-size:.85rem; align-self:center;"></span>
+      </div>
+    </div>
+  </section>
+
+  <footer class="app-footer">נתונים נשמרים מקומית בלבד • ללא שרת וללא אינטרנט</footer>
+
+  </div>
+  </main>
+</div>
+
+<!-- מודל אישור מחיקה -->
+<div id="confirmOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); align-items:center; justify-content:center; z-index:1000;">
+  <div class="card" style="max-width:340px; width:90%;">
+    <h2 id="confirmTitle">אישור פעולה</h2>
+    <p id="confirmMsg" style="color:var(--text-dim);"></p>
+    <div style="display:flex; gap:10px; justify-content:flex-end;">
+      <button class="btn secondary" id="confirmCancel">ביטול</button>
+      <button class="btn danger" id="confirmOk">אישור</button>
+    </div>
+  </div>
+</div>
+
+<!-- מודל תשלום חוב (מלא/חלקי) -->
+<div id="paymentOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); align-items:center; justify-content:center; z-index:1000;">
+  <div class="card" style="max-width:340px; width:90%;">
+    <h2>סימון תשלום</h2>
+    <p id="paymentDebtName" style="color:var(--text-dim);"></p>
+    <div class="form-grid">
+      <div>
+        <label>סכום ששולם (₪)</label>
+        <input type="number" id="paymentAmount" min="0.01" step="0.01">
+      </div>
+    </div>
+    <p style="color:var(--text-dim); font-size:.8rem;">אם הסכום קטן מהחוב, יישאר יתרה פתוחה. אם הוא גדול או שווה, החוב יסומן כשולם במלואו.</p>
+    <div style="display:flex; gap:10px; justify-content:flex-end;">
+      <button class="btn secondary" id="paymentCancel">ביטול</button>
+      <button class="btn" id="paymentConfirm">אישור תשלום</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script>
+(function() {
+  'use strict';
+
+  var STORAGE_KEY = 'financeApp.data.v1';
+
+  var EXPENSE_CATS = ['אוכל', 'דיור', 'תחבורה', 'קניות', 'בילויים', 'חשבונות', 'בריאות', 'אחר'];
+  var INCOME_CATS = ['משכורת', 'עבודה עצמאית', 'החזר חוב', 'מתנה', 'אחר'];
+  var MONTH_NAMES = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+
+  // ---------- Data layer ----------
+  function defaultData() {
+    return { tx: [], hours: [], debts: [], lastRate: 0, budgets: {}, recurring: [], savings: { target: 0, current: 0 } };
+  }
+
+  function loadData() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return defaultData();
+      var parsed = JSON.parse(raw);
+      return Object.assign(defaultData(), parsed);
+    } catch (e) {
+      console.error('Failed to load data', e);
+      return defaultData();
+    }
+  }
+
+  function saveData() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    syncDebtsToIndexedDB();
+    syncEmployersToIndexedDB();
+  }
+
+  // ---------- IndexedDB sync (used by the service worker for background reminders) ----------
+  var DB_NAME = 'financeAppDB';
+  var DEBTS_STORE = 'debts';
+  var EMPLOYERS_STORE = 'employers';
+
+  function withStore(storeName, mode, callback) {
+    if (!('indexedDB' in window)) return;
+    var req = indexedDB.open(DB_NAME, 2);
+    req.onupgradeneeded = function() {
+      var db = req.result;
+      if (!db.objectStoreNames.contains(DEBTS_STORE)) db.createObjectStore(DEBTS_STORE);
+      if (!db.objectStoreNames.contains(EMPLOYERS_STORE)) db.createObjectStore(EMPLOYERS_STORE);
+    };
+    req.onsuccess = function() {
+      var db = req.result;
+      var tx = db.transaction(storeName, mode);
+      callback(tx.objectStore(storeName));
+    };
+    req.onerror = function() { /* IndexedDB unavailable, ignore */ };
+  }
+
+  function syncDebtsToIndexedDB() {
+    var openDebts = state.debts
+      .filter(function(d) { return !d.paid; })
+      .map(function(d) { return { name: d.name, amount: d.amount }; });
+    withStore(DEBTS_STORE, 'readwrite', function(store) {
+      store.put(openDebts, 'current');
+    });
+  }
+
+  function syncEmployersToIndexedDB() {
+    var totals = getEmployerTotalsForMonth(getPrevMonthKey());
+    withStore(EMPLOYERS_STORE, 'readwrite', function(store) {
+      store.put(totals, 'current');
+    });
+  }
+
+  var state = loadData();
+
+  function uid() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+
+  function todayStr() {
+    var d = new Date();
+    var m = String(d.getMonth() + 1).padStart(2, '0');
+    var day = String(d.getDate()).padStart(2, '0');
+    return d.getFullYear() + '-' + m + '-' + day;
+  }
+
+  function fmtMoney(n) {
+    n = Number(n) || 0;
+    return '₪' + n.toLocaleString('he-IL', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  }
+
+  function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.textContent = String(str == null ? '' : str);
+    return div.innerHTML;
+  }
+
+  // ---------- Confirm modal ----------
+  function confirmAction(message, onConfirm) {
+    var overlay = document.getElementById('confirmOverlay');
+    var msg = document.getElementById('confirmMsg');
+    msg.textContent = message;
+    overlay.style.display = 'flex';
+
+    function cleanup() {
+      overlay.style.display = 'none';
+      okBtn.removeEventListener('click', okHandler);
+      cancelBtn.removeEventListener('click', cancelHandler);
+    }
+    function okHandler() { cleanup(); onConfirm(); }
+    function cancelHandler() { cleanup(); }
+
+    var okBtn = document.getElementById('confirmOk');
+    var cancelBtn = document.getElementById('confirmCancel');
+    okBtn.addEventListener('click', okHandler);
+    cancelBtn.addEventListener('click', cancelHandler);
+  }
+
+  // ---------- Tabs ----------
+  var tabButtons = document.querySelectorAll('.tab-btn');
+  tabButtons.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      tabButtons.forEach(function(b) { b.classList.remove('active'); });
+      document.querySelectorAll('.tab-content').forEach(function(t) { t.classList.remove('active'); });
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      if (btn.dataset.tab === 'summary') renderSummary();
+    });
+  });
+
+  // ---------- Transactions ----------
+  var txKind = 'out';
+  var txKindSwitch = document.getElementById('txKindSwitch');
+  txKindSwitch.addEventListener('click', function(e) {
+    var btn = e.target.closest('button[data-kind]');
+    if (!btn) return;
+    txKind = btn.dataset.kind;
+    txKindSwitch.querySelectorAll('button').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    populateTxCategories();
+  });
+
+  function populateTxCategories() {
+    var sel = document.getElementById('txCat');
+    var cats = txKind === 'in' ? INCOME_CATS : EXPENSE_CATS;
+    sel.innerHTML = cats.map(function(c) { return '<option value="' + c + '">' + c + '</option>'; }).join('');
+  }
+
+  document.getElementById('txDate').value = todayStr();
+  populateTxCategories();
+
+  (function populateTxFilterCats() {
+    var sel = document.getElementById('txFilterCat');
+    var allCats = EXPENSE_CATS.concat(INCOME_CATS).filter(function(c, i, arr) { return arr.indexOf(c) === i; });
+    sel.innerHTML = '<option value="">הכל</option>' + allCats.map(function(c) { return '<option value="' + c + '">' + c + '</option>'; }).join('');
+  })();
+  ['txFilterSearch', 'txFilterCat', 'txFilterFrom', 'txFilterTo'].forEach(function(id) {
+    document.getElementById(id).addEventListener('input', renderTx);
+  });
+  document.getElementById('txFilterClear').addEventListener('click', function() {
+    document.getElementById('txFilterSearch').value = '';
+    document.getElementById('txFilterCat').value = '';
+    document.getElementById('txFilterFrom').value = '';
+    document.getElementById('txFilterTo').value = '';
+    renderTx();
+  });
+
+  var editingTxId = null;
+
+  function startEditTx(t) {
+    editingTxId = t.id;
+    txKind = t.kind;
+    txKindSwitch.querySelectorAll('button').forEach(function(b) { b.classList.toggle('active', b.dataset.kind === t.kind); });
+    populateTxCategories();
+    document.getElementById('txAmount').value = t.amount;
+    document.getElementById('txDesc').value = t.desc || '';
+    document.getElementById('txCat').value = t.cat;
+    document.getElementById('txDate').value = t.date;
+    document.getElementById('txSubmitBtn').textContent = 'עדכן תנועה';
+    document.getElementById('txCancelEditBtn').style.display = 'inline-block';
+  }
+
+  function cancelEditTx() {
+    editingTxId = null;
+    document.getElementById('txAmount').value = '';
+    document.getElementById('txDesc').value = '';
+    document.getElementById('txDate').value = todayStr();
+    document.getElementById('txSubmitBtn').textContent = 'הוסף תנועה';
+    document.getElementById('txCancelEditBtn').style.display = 'none';
+  }
+
+  document.getElementById('txCancelEditBtn').addEventListener('click', cancelEditTx);
+
+  document.getElementById('txForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var amount = parseFloat(document.getElementById('txAmount').value);
+    var desc = document.getElementById('txDesc').value.trim();
+    var cat = document.getElementById('txCat').value;
+    var date = document.getElementById('txDate').value;
+
+    if (!(amount > 0)) { alert('יש להזין סכום גדול מאפס'); return; }
+    if (!date) { alert('יש לבחור תאריך'); return; }
+
+    if (editingTxId) {
+      var existing = state.tx.find(function(t) { return t.id === editingTxId; });
+      if (existing) {
+        existing.kind = txKind; existing.amount = amount; existing.desc = desc; existing.cat = cat; existing.date = date;
+      }
+      cancelEditTx();
+    } else {
+      state.tx.push({ id: uid(), kind: txKind, amount: amount, desc: desc, cat: cat, date: date });
+      document.getElementById('txAmount').value = '';
+      document.getElementById('txDesc').value = '';
+      document.getElementById('txDate').value = todayStr();
+    }
+    saveData();
+
+    renderTx();
+    renderReminder();
+    renderEmployerReminder();
+    renderQuickStats();
+  });
+
+  function renderTx() {
+    var list = document.getElementById('txList');
+    var search = document.getElementById('txFilterSearch').value.trim().toLowerCase();
+    var catFilter = document.getElementById('txFilterCat').value;
+    var fromDate = document.getElementById('txFilterFrom').value;
+    var toDate = document.getElementById('txFilterTo').value;
+
+    if (state.tx.length === 0) {
+      list.innerHTML = '<div class="empty">אין תנועות עדיין</div>';
+      return;
+    }
+
+    var items = state.tx.slice().sort(function(a, b) { return b.date.localeCompare(a.date) || 0; });
+    items = items.filter(function(t) {
+      if (search && (t.desc || '').toLowerCase().indexOf(search) === -1 && t.cat.toLowerCase().indexOf(search) === -1) return false;
+      if (catFilter && t.cat !== catFilter) return false;
+      if (fromDate && t.date < fromDate) return false;
+      if (toDate && t.date > toDate) return false;
+      return true;
+    });
+
+    if (items.length === 0) {
+      list.innerHTML = '<div class="empty">אין תנועות תואמות לסינון</div>';
+      return;
+    }
+
+    list.innerHTML = items.map(function(t) {
+      var sign = t.kind === 'in' ? '+' : '-';
+      return '<div class="row-item">' +
+        '<div class="main">' +
+          '<span class="amt ' + t.kind + '">' + sign + fmtMoney(t.amount) + '</span>' +
+          '<span class="meta">' + escapeHtml(t.desc || '') + (t.desc ? ' · ' : '') + escapeHtml(t.cat) + ' · ' + t.date + '</span>' +
+        '</div>' +
+        '<div class="actions">' +
+          '<button class="btn secondary small" data-edit-tx="' + t.id + '">ערוך</button>' +
+          '<button class="btn danger small" data-del-tx="' + t.id + '">מחק</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  document.getElementById('txList').addEventListener('click', function(e) {
+    var editBtn = e.target.closest('button[data-edit-tx]');
+    if (editBtn) {
+      var t = state.tx.find(function(t) { return t.id === editBtn.dataset.editTx; });
+      if (t) startEditTx(t);
+      return;
+    }
+    var btn = e.target.closest('button[data-del-tx]');
+    if (!btn) return;
+    var id = btn.dataset.delTx;
+    confirmAction('למחוק את התנועה?', function() {
+      state.tx = state.tx.filter(function(t) { return t.id !== id; });
+      if (editingTxId === id) cancelEditTx();
+      saveData();
+      renderTx();
+      renderReminder();
+      renderEmployerReminder();
+      renderQuickStats();
+    });
+  });
+
+  // ---------- Hours ----------
+  document.getElementById('hDate').value = todayStr();
+  if (state.lastRate) document.getElementById('hRate').value = state.lastRate;
+
+  var editingHoursId = null;
+
+  function startEditHours(h) {
+    editingHoursId = h.id;
+    document.getElementById('hDate').value = h.date;
+    document.getElementById('hHours').value = h.hours;
+    document.getElementById('hRate').value = h.rate;
+    document.getElementById('hWhere').value = h.where || '';
+    document.getElementById('hSubmitBtn').textContent = 'עדכן רישום';
+    document.getElementById('hCancelEditBtn').style.display = 'inline-block';
+  }
+
+  function cancelEditHours() {
+    editingHoursId = null;
+    document.getElementById('hHours').value = '';
+    document.getElementById('hWhere').value = '';
+    document.getElementById('hDate').value = todayStr();
+    document.getElementById('hRate').value = state.lastRate || '';
+    document.getElementById('hSubmitBtn').textContent = 'הוסף רישום';
+    document.getElementById('hCancelEditBtn').style.display = 'none';
+  }
+
+  document.getElementById('hCancelEditBtn').addEventListener('click', cancelEditHours);
+
+  document.getElementById('hoursForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var date = document.getElementById('hDate').value;
+    var hours = parseFloat(document.getElementById('hHours').value);
+    var rate = parseFloat(document.getElementById('hRate').value);
+    var where = document.getElementById('hWhere').value.trim();
+
+    if (!date) { alert('יש לבחור תאריך'); return; }
+    if (!(hours > 0)) { alert('יש להזין מספר שעות גדול מאפס'); return; }
+    if (!(rate > 0)) { alert('יש להזין תעריף גדול מאפס'); return; }
+
+    if (editingHoursId) {
+      var existing = state.hours.find(function(h) { return h.id === editingHoursId; });
+      if (existing) { existing.date = date; existing.hours = hours; existing.rate = rate; existing.where = where; }
+      state.lastRate = rate;
+      cancelEditHours();
+    } else {
+      state.hours.push({ id: uid(), date: date, hours: hours, rate: rate, where: where });
+      state.lastRate = rate;
+      document.getElementById('hHours').value = '';
+      document.getElementById('hWhere').value = '';
+      document.getElementById('hDate').value = todayStr();
+      document.getElementById('hRate').value = rate;
+    }
+    saveData();
+
+    renderHours();
+    renderHoursByClient();
+  });
+
+  function renderHours() {
+    var list = document.getElementById('hoursList');
+    var items = state.hours.slice().sort(function(a, b) { return b.date.localeCompare(a.date) || 0; });
+    if (items.length === 0) {
+      list.innerHTML = '<div class="empty">אין רישומי שעות עדיין</div>';
+      return;
+    }
+    list.innerHTML = items.map(function(h) {
+      var wage = h.hours * h.rate;
+      return '<div class="row-item">' +
+        '<div class="main">' +
+          '<span class="amt in">' + fmtMoney(wage) + '</span>' +
+          '<span class="meta">' + h.hours + ' שעות × ' + fmtMoney(h.rate) + (h.where ? ' · ' + escapeHtml(h.where) : '') + ' · ' + h.date + '</span>' +
+        '</div>' +
+        '<div class="actions">' +
+          '<button class="btn secondary small" data-edit-hours="' + h.id + '">ערוך</button>' +
+          '<button class="btn danger small" data-del-hours="' + h.id + '">מחק</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  document.getElementById('hoursList').addEventListener('click', function(e) {
+    var editBtn = e.target.closest('button[data-edit-hours]');
+    if (editBtn) {
+      var h = state.hours.find(function(h) { return h.id === editBtn.dataset.editHours; });
+      if (h) startEditHours(h);
+      return;
+    }
+    var btn = e.target.closest('button[data-del-hours]');
+    if (!btn) return;
+    var id = btn.dataset.delHours;
+    confirmAction('למחוק את רישום השעות?', function() {
+      state.hours = state.hours.filter(function(h) { return h.id !== id; });
+      if (editingHoursId === id) cancelEditHours();
+      saveData();
+      renderHours();
+      renderHoursByClient();
+    });
+  });
+
+  // ---------- Hours grouped by client ("folders"), scoped per month ----------
+  var clientMonthDate = new Date();
+  clientMonthDate.setDate(1);
+
+  document.getElementById('prevClientMonth').addEventListener('click', function() {
+    clientMonthDate.setMonth(clientMonthDate.getMonth() - 1);
+    renderHoursByClient();
+  });
+  document.getElementById('nextClientMonth').addEventListener('click', function() {
+    clientMonthDate.setMonth(clientMonthDate.getMonth() + 1);
+    renderHoursByClient();
+  });
+
+  function renderHoursByClient() {
+    var year = clientMonthDate.getFullYear();
+    var month = clientMonthDate.getMonth();
+    var monthKey = year + '-' + String(month + 1).padStart(2, '0');
+    document.getElementById('clientMonthTitle').textContent = MONTH_NAMES[month] + ' ' + year;
+
+    var monthHours = state.hours.filter(function(h) { return h.date && h.date.slice(0, 7) === monthKey; });
+
+    var groups = {};
+    monthHours.forEach(function(h) {
+      var key = h.where && h.where.trim() ? h.where.trim() : 'ללא לקוח מוגדר';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(h);
+    });
+
+    var names = Object.keys(groups).sort(function(a, b) { return a.localeCompare(b, 'he'); });
+    var container = document.getElementById('clientFolders');
+
+    if (names.length === 0) {
+      container.innerHTML = '<div class="empty">אין רישומי שעות בחודש זה</div>';
+      return;
+    }
+
+    container.innerHTML = '<div class="folder-grid">' + names.map(function(name) {
+      var entries = groups[name].slice().sort(function(a, b) { return b.date.localeCompare(a.date); });
+      var totalHours = entries.reduce(function(s, h) { return s + h.hours; }, 0);
+      var totalWage = entries.reduce(function(s, h) { return s + h.hours * h.rate; }, 0);
+      return '<div class="folder-card">' +
+        '<div class="folder-name">📁 ' + escapeHtml(name) + '</div>' +
+        '<div class="folder-stats">' +
+          '<span>' + totalHours.toLocaleString('he-IL') + ' שעות</span>' +
+          '<span>' + fmtMoney(totalWage) + '</span>' +
+        '</div>' +
+        '<div class="folder-entries">' + entries.map(function(h) {
+          return '<div>' + h.date + ' — ' + h.hours + ' שעות × ' + fmtMoney(h.rate) + '</div>';
+        }).join('') + '</div>' +
+      '</div>';
+    }).join('') + '</div>';
+  }
+
+  // ---------- Debts ----------
+  var editingDebtId = null;
+
+  function startEditDebt(d) {
+    editingDebtId = d.id;
+    document.getElementById('dName').value = d.name;
+    document.getElementById('dAmount').value = d.amount;
+    document.getElementById('dDue').value = d.due || '';
+    document.getElementById('dNote').value = d.note || '';
+    document.getElementById('dSubmitBtn').textContent = 'עדכן חוב';
+    document.getElementById('dCancelEditBtn').style.display = 'inline-block';
+  }
+
+  function cancelEditDebt() {
+    editingDebtId = null;
+    document.getElementById('dName').value = '';
+    document.getElementById('dAmount').value = '';
+    document.getElementById('dDue').value = '';
+    document.getElementById('dNote').value = '';
+    document.getElementById('dSubmitBtn').textContent = 'הוסף חוב';
+    document.getElementById('dCancelEditBtn').style.display = 'none';
+  }
+
+  document.getElementById('dCancelEditBtn').addEventListener('click', cancelEditDebt);
+
+  document.getElementById('debtForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var name = document.getElementById('dName').value.trim();
+    var amount = parseFloat(document.getElementById('dAmount').value);
+    var due = document.getElementById('dDue').value;
+    var note = document.getElementById('dNote').value.trim();
+
+    if (!name) { alert('יש להזין שם'); return; }
+    if (!(amount > 0)) { alert('יש להזין סכום גדול מאפס'); return; }
+
+    if (editingDebtId) {
+      var existing = state.debts.find(function(d) { return d.id === editingDebtId; });
+      if (existing) { existing.name = name; existing.amount = amount; existing.due = due; existing.note = note; }
+      cancelEditDebt();
+    } else {
+      state.debts.push({ id: uid(), name: name, amount: amount, paid: false, due: due, note: note });
+      document.getElementById('dName').value = '';
+      document.getElementById('dAmount').value = '';
+      document.getElementById('dDue').value = '';
+      document.getElementById('dNote').value = '';
+    }
+    saveData();
+
+    renderDebts();
+    renderReminder();
+    renderEmployerReminder();
+    renderQuickStats();
+  });
+
+  function renderDebts() {
+    var openList = document.getElementById('debtOpenList');
+    var paidList = document.getElementById('debtPaidList');
+
+    var open = state.debts.filter(function(d) { return !d.paid; })
+      .sort(function(a, b) { return (a.due || '9999').localeCompare(b.due || '9999'); });
+    var paid = state.debts.filter(function(d) { return d.paid; });
+
+    openList.innerHTML = open.length === 0
+      ? '<div class="empty">אין חובות פתוחים</div>'
+      : open.map(function(d) {
+        return '<div class="row-item">' +
+          '<div class="main">' +
+            '<span class="amt out">' + fmtMoney(d.amount) + '</span>' +
+            '<span class="meta">' + escapeHtml(d.name) + (d.due ? ' · יעד: ' + d.due : '') + (d.note ? ' · ' + escapeHtml(d.note) : '') + '</span>' +
+          '</div>' +
+          '<div class="actions">' +
+            '<button class="btn secondary small" data-pay-debt="' + d.id + '">תשלום</button>' +
+            '<button class="btn secondary small" data-edit-debt="' + d.id + '">ערוך</button>' +
+            '<button class="btn danger small" data-del-debt="' + d.id + '">מחק</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+
+    paidList.innerHTML = paid.length === 0
+      ? '<div class="empty">אין חובות ששולמו</div>'
+      : paid.map(function(d) {
+        return '<div class="row-item paid">' +
+          '<div class="main">' +
+            '<span class="amt in">' + fmtMoney(d.amount) + '</span>' +
+            '<span class="meta">' + escapeHtml(d.name) + (d.note ? ' · ' + escapeHtml(d.note) : '') + '</span>' +
+          '</div>' +
+          '<div class="actions">' +
+            '<button class="btn danger small" data-del-debt="' + d.id + '">מחק</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+  }
+
+  function handleDebtListClick(e) {
+    var payBtn = e.target.closest('button[data-pay-debt]');
+    var editBtn = e.target.closest('button[data-edit-debt]');
+    var delBtn = e.target.closest('button[data-del-debt]');
+
+    if (payBtn) {
+      var debt = state.debts.find(function(d) { return d.id === payBtn.dataset.payDebt; });
+      if (debt) openPaymentModal(debt);
+      return;
+    }
+
+    if (editBtn) {
+      var d2 = state.debts.find(function(d) { return d.id === editBtn.dataset.editDebt; });
+      if (d2) startEditDebt(d2);
+      return;
+    }
+
+    if (delBtn) {
+      var did = delBtn.dataset.delDebt;
+      confirmAction('למחוק את החוב?', function() {
+        state.debts = state.debts.filter(function(d) { return d.id !== did; });
+        if (editingDebtId === did) cancelEditDebt();
+        saveData();
+        renderDebts();
+        renderReminder();
+        renderEmployerReminder();
+        renderQuickStats();
+      });
+    }
+  }
+
+  document.getElementById('debtOpenList').addEventListener('click', handleDebtListClick);
+  document.getElementById('debtPaidList').addEventListener('click', handleDebtListClick);
+
+  // ---------- Partial / full debt payment modal ----------
+  var paymentDebtId = null;
+
+  function openPaymentModal(debt) {
+    paymentDebtId = debt.id;
+    document.getElementById('paymentDebtName').textContent = debt.name + ' — נותר לתשלום: ' + fmtMoney(debt.amount);
+    document.getElementById('paymentAmount').value = debt.amount;
+    document.getElementById('paymentOverlay').style.display = 'flex';
+  }
+
+  function closePaymentModal() {
+    paymentDebtId = null;
+    document.getElementById('paymentOverlay').style.display = 'none';
+  }
+
+  document.getElementById('paymentCancel').addEventListener('click', closePaymentModal);
+
+  document.getElementById('paymentConfirm').addEventListener('click', function() {
+    var debt = state.debts.find(function(d) { return d.id === paymentDebtId; });
+    if (!debt) { closePaymentModal(); return; }
+    var amt = parseFloat(document.getElementById('paymentAmount').value);
+    if (!(amt > 0)) { alert('יש להזין סכום גדול מאפס'); return; }
+
+    if (amt >= debt.amount) {
+      var fullAmount = debt.amount;
+      debt.paid = true;
+      state.tx.push({ id: uid(), kind: 'in', amount: fullAmount, desc: 'החזר חוב מ-' + debt.name, cat: 'החזר חוב', date: todayStr() });
+    } else {
+      debt.amount = Math.round((debt.amount - amt) * 100) / 100;
+      state.tx.push({ id: uid(), kind: 'in', amount: amt, desc: 'תשלום חלקי מ-' + debt.name, cat: 'החזר חוב', date: todayStr() });
+    }
+    saveData();
+    closePaymentModal();
+    renderDebts();
+    renderTx();
+    renderReminder();
+    renderEmployerReminder();
+    renderQuickStats();
+  });
+
+  // ---------- Reminder banner (day 8-15) ----------
+  function renderReminder() {
+    var banner = document.getElementById('reminderBanner');
+    var day = new Date().getDate();
+    var open = state.debts.filter(function(d) { return !d.paid; });
+
+    if (day >= 8 && day <= 15 && open.length > 0) {
+      var listEl = document.getElementById('reminderList');
+      listEl.innerHTML = open.map(function(d) {
+        return '<li>' + escapeHtml(d.name) + ' — ' + fmtMoney(d.amount) + '</li>';
+      }).join('');
+      var total = open.reduce(function(s, d) { return s + d.amount; }, 0);
+      document.getElementById('reminderTotal').textContent = 'סה"כ: ' + fmtMoney(total);
+      banner.classList.add('show');
+    } else {
+      banner.classList.remove('show');
+    }
+  }
+
+  // ---------- Employer payment reminder (previous month's wages, day 8-15) ----------
+  function getPrevMonthKey() {
+    var now = new Date();
+    var prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    return prev.getFullYear() + '-' + String(prev.getMonth() + 1).padStart(2, '0');
+  }
+
+  function getEmployerTotalsForMonth(monthKey) {
+    var monthHours = state.hours.filter(function(h) { return h.date && h.date.slice(0, 7) === monthKey; });
+    var groups = {};
+    monthHours.forEach(function(h) {
+      var key = h.where && h.where.trim() ? h.where.trim() : 'ללא לקוח מוגדר';
+      groups[key] = (groups[key] || 0) + h.hours * h.rate;
+    });
+    return Object.keys(groups).sort(function(a, b) { return a.localeCompare(b, 'he'); })
+      .map(function(name) { return { name: name, amount: groups[name] }; });
+  }
+
+  function renderEmployerReminder() {
+    var banner = document.getElementById('employerBanner');
+    var day = new Date().getDate();
+    var totals = getEmployerTotalsForMonth(getPrevMonthKey());
+
+    if (day >= 8 && day <= 15 && totals.length > 0) {
+      var listEl = document.getElementById('employerList');
+      listEl.innerHTML = totals.map(function(t) {
+        return '<li>' + escapeHtml(t.name) + ' — ' + fmtMoney(t.amount) + '</li>';
+      }).join('');
+      var total = totals.reduce(function(s, t) { return s + t.amount; }, 0);
+      document.getElementById('employerTotal').textContent = 'סה"כ: ' + fmtMoney(total);
+      banner.classList.add('show');
+    } else {
+      banner.classList.remove('show');
+    }
+  }
+
+  // ---------- Monthly summary ----------
+  var summaryDate = new Date();
+  summaryDate.setDate(1);
+
+  document.getElementById('prevMonth').addEventListener('click', function() {
+    summaryDate.setMonth(summaryDate.getMonth() - 1);
+    renderSummary();
+  });
+  document.getElementById('nextMonth').addEventListener('click', function() {
+    summaryDate.setMonth(summaryDate.getMonth() + 1);
+    renderSummary();
+  });
+
+  function renderSummary() {
+    var year = summaryDate.getFullYear();
+    var month = summaryDate.getMonth();
+    var monthKey = year + '-' + String(month + 1).padStart(2, '0');
+
+    document.getElementById('monthTitle').textContent = MONTH_NAMES[month] + ' ' + year;
+
+    var monthTx = state.tx.filter(function(t) { return t.date && t.date.slice(0, 7) === monthKey; });
+    var income = monthTx.filter(function(t) { return t.kind === 'in'; }).reduce(function(s, t) { return s + t.amount; }, 0);
+    var expense = monthTx.filter(function(t) { return t.kind === 'out'; }).reduce(function(s, t) { return s + t.amount; }, 0);
+    var balance = income - expense;
+
+    var monthHours = state.hours.filter(function(h) { return h.date && h.date.slice(0, 7) === monthKey; });
+    var totalHours = monthHours.reduce(function(s, h) { return s + h.hours; }, 0);
+    var totalWage = monthHours.reduce(function(s, h) { return s + h.hours * h.rate; }, 0);
+
+    document.getElementById('sumIncome').textContent = fmtMoney(income);
+    document.getElementById('sumExpense').textContent = fmtMoney(expense);
+    var balEl = document.getElementById('sumBalance');
+    balEl.textContent = fmtMoney(balance);
+    balEl.className = 'value ' + (balance >= 0 ? 'green' : 'red');
+    document.getElementById('sumHours').textContent = totalHours.toLocaleString('he-IL');
+    document.getElementById('sumWage').textContent = fmtMoney(totalWage);
+
+    var openDebts = state.debts.filter(function(d) { return !d.paid; });
+    var debtTotal = openDebts.reduce(function(s, d) { return s + d.amount; }, 0);
+    document.getElementById('sumDebtTotal').textContent = fmtMoney(debtTotal);
+
+    var debtListEl = document.getElementById('sumDebtList');
+    debtListEl.innerHTML = openDebts.length === 0
+      ? '<div class="empty">אין חובות פתוחים</div>'
+      : openDebts.map(function(d) {
+        return '<div class="row-item">' +
+          '<div class="main">' +
+            '<span class="amt out">' + fmtMoney(d.amount) + '</span>' +
+            '<span class="meta">' + escapeHtml(d.name) + (d.due ? ' · יעד: ' + d.due : '') + '</span>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+
+    renderCategoryBreakdown(monthKey);
+  }
+
+  // ---------- Category breakdown (expenses) + budget progress + pie chart ----------
+  var categoryChartInstance = null;
+
+  function renderCategoryBreakdown(monthKey) {
+    var monthExpenseTx = state.tx.filter(function(t) { return t.kind === 'out' && t.date && t.date.slice(0, 7) === monthKey; });
+    var groups = {};
+    monthExpenseTx.forEach(function(t) { groups[t.cat] = (groups[t.cat] || 0) + t.amount; });
+    var cats = Object.keys(groups).sort(function(a, b) { return groups[b] - groups[a]; });
+    var total = cats.reduce(function(s, c) { return s + groups[c]; }, 0);
+
+    var listEl = document.getElementById('categoryBreakdownList');
+    if (cats.length === 0) {
+      listEl.innerHTML = '<div class="empty">אין הוצאות בחודש זה</div>';
+    } else {
+      listEl.innerHTML = cats.map(function(cat) {
+        var amt = groups[cat];
+        var pct = total > 0 ? Math.round(amt / total * 100) : 0;
+        var budget = state.budgets[cat];
+        var overBudget = budget != null && amt > budget;
+        var budgetInfo = budget != null ? (' · תקציב: ' + fmtMoney(budget) + (overBudget ? ' ⚠️ חריגה' : '')) : '';
+        return '<div class="row-item' + (overBudget ? ' over-budget' : '') + '">' +
+          '<div class="main">' +
+            '<span class="amt out">' + fmtMoney(amt) + '</span>' +
+            '<span class="meta">' + escapeHtml(cat) + ' · ' + pct + '%' + budgetInfo + '</span>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    var canvas = document.getElementById('categoryChart');
+    if (categoryChartInstance) { categoryChartInstance.destroy(); categoryChartInstance = null; }
+    if (typeof Chart === 'undefined' || !canvas || cats.length === 0) return;
+
+    var palette = ['#6366f1', '#34d399', '#f87171', '#fbbf24', '#818cf8', '#f472b6', '#22d3ee', '#a3e635'];
+    categoryChartInstance = new Chart(canvas, {
+      type: 'pie',
+      data: {
+        labels: cats,
+        datasets: [{
+          data: cats.map(function(c) { return groups[c]; }),
+          backgroundColor: cats.map(function(_, i) { return palette[i % palette.length]; })
+        }]
+      },
+      options: {
+        plugins: { legend: { labels: { color: '#e8ecf5' } } }
+      }
+    });
+  }
+
+  // ---------- Backup / restore ----------
+  document.getElementById('exportBtn').addEventListener('click', function() {
+    var blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'גיבוי-כספים-' + todayStr() + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById('importBtn').addEventListener('click', function() {
+    document.getElementById('importFile').click();
+  });
+
+  document.getElementById('importFile').addEventListener('change', function(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function() {
+      try {
+        var parsed = JSON.parse(reader.result);
+        confirmAction('שחזור מגיבוי יחליף את כל הנתונים הקיימים. להמשיך?', function() {
+          state = Object.assign(defaultData(), parsed);
+          saveData();
+          renderAll();
+          alert('השחזור הושלם בהצלחה');
+        });
+      } catch (err) {
+        alert('קובץ לא תקין');
+      }
+      e.target.value = '';
+    };
+    reader.readAsText(file);
+  });
+
+  // ---------- Monthly budgets per category ----------
+  function renderBudgetInputs() {
+    var container = document.getElementById('budgetInputs');
+    container.innerHTML = EXPENSE_CATS.map(function(cat) {
+      var val = state.budgets[cat] != null ? state.budgets[cat] : '';
+      return '<div><label>' + cat + '</label><input type="number" min="0" step="1" data-budget-cat="' + cat + '" value="' + val + '" placeholder="ללא הגבלה"></div>';
+    }).join('');
+  }
+
+  document.getElementById('saveBudgetsBtn').addEventListener('click', function() {
+    var inputs = document.querySelectorAll('[data-budget-cat]');
+    var budgets = {};
+    inputs.forEach(function(inp) {
+      var v = parseFloat(inp.value);
+      if (v > 0) budgets[inp.dataset.budgetCat] = v;
+    });
+    state.budgets = budgets;
+    saveData();
+    alert('התקציבים נשמרו');
+    renderSummary();
+  });
+
+  // ---------- Recurring (fixed) transactions ----------
+  var recKind = 'out';
+  var recKindSwitch = document.getElementById('recKindSwitch');
+  recKindSwitch.addEventListener('click', function(e) {
+    var btn = e.target.closest('button[data-kind]');
+    if (!btn) return;
+    recKind = btn.dataset.kind;
+    recKindSwitch.querySelectorAll('button').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    populateRecCategories();
+  });
+
+  function populateRecCategories() {
+    var sel = document.getElementById('recCat');
+    var cats = recKind === 'in' ? INCOME_CATS : EXPENSE_CATS;
+    sel.innerHTML = cats.map(function(c) { return '<option value="' + c + '">' + c + '</option>'; }).join('');
+  }
+  populateRecCategories();
+
+  document.getElementById('recurringForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var amount = parseFloat(document.getElementById('recAmount').value);
+    var desc = document.getElementById('recDesc').value.trim();
+    var cat = document.getElementById('recCat').value;
+    var day = parseInt(document.getElementById('recDay').value, 10);
+
+    if (!(amount > 0)) { alert('יש להזין סכום גדול מאפס'); return; }
+    if (!(day >= 1 && day <= 28)) { alert('יש להזין יום בין 1 ל-28'); return; }
+
+    state.recurring.push({ id: uid(), kind: recKind, amount: amount, desc: desc, cat: cat, day: day, lastAppliedMonth: null });
+    saveData();
+
+    document.getElementById('recAmount').value = '';
+    document.getElementById('recDesc').value = '';
+    document.getElementById('recDay').value = '';
+
+    renderRecurring();
+  });
+
+  function renderRecurring() {
+    var list = document.getElementById('recurringList');
+    if (state.recurring.length === 0) {
+      list.innerHTML = '<div class="empty">אין רשומות קבועות</div>';
+      return;
+    }
+    list.innerHTML = state.recurring.map(function(r) {
+      return '<div class="row-item">' +
+        '<div class="main">' +
+          '<span class="amt ' + r.kind + '">' + fmtMoney(r.amount) + '</span>' +
+          '<span class="meta">' + escapeHtml(r.desc || '') + (r.desc ? ' · ' : '') + escapeHtml(r.cat) + ' · כל ' + r.day + ' לחודש</span>' +
+        '</div>' +
+        '<div class="actions"><button class="btn danger small" data-del-rec="' + r.id + '">מחק</button></div>' +
+      '</div>';
+    }).join('');
+  }
+
+  document.getElementById('recurringList').addEventListener('click', function(e) {
+    var btn = e.target.closest('button[data-del-rec]');
+    if (!btn) return;
+    var id = btn.dataset.delRec;
+    confirmAction('למחוק את הרשומה הקבועה? (זה לא ימחק תנועות שכבר נוספו בעבר)', function() {
+      state.recurring = state.recurring.filter(function(r) { return r.id !== id; });
+      saveData();
+      renderRecurring();
+    });
+  });
+
+  function applyRecurring() {
+    var today = new Date();
+    var curMonthKey = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
+    var applied = false;
+    state.recurring.forEach(function(r) {
+      if (r.lastAppliedMonth !== curMonthKey) {
+        state.tx.push({
+          id: uid(), kind: r.kind, amount: r.amount, desc: (r.desc || 'רשומה קבועה'),
+          cat: r.cat, date: curMonthKey + '-' + String(r.day).padStart(2, '0')
+        });
+        r.lastAppliedMonth = curMonthKey;
+        applied = true;
+      }
+    });
+    if (applied) saveData();
+  }
+
+  // ---------- Savings goal ----------
+  document.getElementById('saveSavingsTargetBtn').addEventListener('click', function() {
+    var v = parseFloat(document.getElementById('savingsTarget').value);
+    state.savings.target = v > 0 ? v : 0;
+    saveData();
+    renderSavings();
+  });
+
+  document.getElementById('savingsAddBtn').addEventListener('click', function() {
+    var v = parseFloat(document.getElementById('savingsAddAmount').value);
+    if (!(v > 0)) { alert('יש להזין סכום גדול מאפס'); return; }
+    state.savings.current += v;
+    saveData();
+    document.getElementById('savingsAddAmount').value = '';
+    renderSavings();
+  });
+
+  document.getElementById('savingsWithdrawBtn').addEventListener('click', function() {
+    var v = parseFloat(document.getElementById('savingsAddAmount').value);
+    if (!(v > 0)) { alert('יש להזין סכום גדול מאפס'); return; }
+    confirmAction('למשוך ' + fmtMoney(v) + ' מהחיסכון?', function() {
+      state.savings.current = Math.max(0, state.savings.current - v);
+      saveData();
+      document.getElementById('savingsAddAmount').value = '';
+      renderSavings();
+    });
+  });
+
+  function renderSavings() {
+    document.getElementById('savingsTarget').value = state.savings.target || '';
+    document.getElementById('savingsCurrentLabel').textContent = 'נחסך: ' + fmtMoney(state.savings.current);
+    document.getElementById('savingsTargetLabel').textContent = 'מתוך ' + fmtMoney(state.savings.target);
+    var pct = state.savings.target > 0 ? Math.min(100, Math.round(state.savings.current / state.savings.target * 100)) : 0;
+    document.getElementById('savingsProgressBar').style.width = pct + '%';
+  }
+
+  // ---------- Quick stats strip (always visible, regardless of active tab) ----------
+  function renderQuickStats() {
+    var balance = state.tx.reduce(function(s, t) { return s + (t.kind === 'in' ? t.amount : -t.amount); }, 0);
+
+    var curMonthKey = todayStr().slice(0, 7);
+    var curMonthTx = state.tx.filter(function(t) { return t.date && t.date.slice(0, 7) === curMonthKey; });
+    var monthIncome = curMonthTx.filter(function(t) { return t.kind === 'in'; }).reduce(function(s, t) { return s + t.amount; }, 0);
+    var monthExpense = curMonthTx.filter(function(t) { return t.kind === 'out'; }).reduce(function(s, t) { return s + t.amount; }, 0);
+
+    var openDebtsTotal = state.debts.filter(function(d) { return !d.paid; }).reduce(function(s, d) { return s + d.amount; }, 0);
+
+    var balEl = document.getElementById('qsBalance');
+    balEl.textContent = fmtMoney(balance);
+    balEl.className = 'value ' + (balance >= 0 ? 'green' : 'red');
+    document.getElementById('qsMonthIncome').textContent = fmtMoney(monthIncome);
+    document.getElementById('qsMonthExpense').textContent = fmtMoney(monthExpense);
+    document.getElementById('qsOpenDebts').textContent = fmtMoney(openDebtsTotal);
+  }
+
+  // ---------- Init ----------
+  function renderAll() {
+    renderTx();
+    renderHours();
+    renderHoursByClient();
+    renderDebts();
+    renderReminder();
+    renderEmployerReminder();
+    renderQuickStats();
+    renderSummary();
+    renderBudgetInputs();
+    renderRecurring();
+    renderSavings();
+  }
+
+  applyRecurring();
+  renderAll();
+  syncDebtsToIndexedDB();
+  syncEmployersToIndexedDB();
+
+  // ---------- PWA / Service Worker + notifications ----------
+  var notifStatusEl = document.getElementById('notifStatus');
+
+  function updateNotifStatus() {
+    if (!('Notification' in window)) {
+      notifStatusEl.textContent = 'התראות אינן נתמכות בדפדפן זה';
+      return;
+    }
+    var map = { granted: 'התראות מופעלות', denied: 'התראות נחסמו בדפדפן', default: 'התראות לא הופעלו עדיין' };
+    notifStatusEl.textContent = map[Notification.permission] || '';
+  }
+  updateNotifStatus();
+
+  document.getElementById('enableNotifBtn').addEventListener('click', function() {
+    if (!('Notification' in window)) { alert('הדפדפן הזה לא תומך בהתראות'); return; }
+    Notification.requestPermission().then(function() {
+      updateNotifStatus();
+      requestDebtReminderCheck();
+    });
+  });
+
+  function requestDebtReminderCheck() {
+    if (!('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.ready.then(function(reg) {
+      if (reg.active) reg.active.postMessage({ type: 'CHECK_DEBT_REMINDER' });
+    }).catch(function() {});
+  }
+
+  if ('serviceWorker' in navigator && window.location.protocol !== 'file:') {
+    navigator.serviceWorker.register('sw.js').then(function(reg) {
+      // בדיקה מיידית בכל פתיחת האפליקציה (מכסה גם מכשירים בלי תמיכה ב-periodic sync)
+      requestDebtReminderCheck();
+
+      // ניסיון best-effort לרישום ריצה תקופתית ברקע - נתמך רק בחלק מהדפדפנים (בעיקר Chrome/Android)
+      if ('periodicSync' in reg) {
+        navigator.permissions.query({ name: 'periodic-background-sync' }).then(function(status) {
+          if (status.state === 'granted') {
+            reg.periodicSync.register('monthly-debt-reminder', { minInterval: 24 * 60 * 60 * 1000 }).catch(function() {});
+          }
+        }).catch(function() {});
+      }
+    }).catch(function() {});
+  }
+})();
+</script>
+</body>
+</html>
