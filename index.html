@@ -410,8 +410,12 @@
     <h2>📈 מבט מהיר</h2>
     <div class="stats-grid">
       <div class="stat">
-        <div class="label">יתרה כוללת</div>
+        <div class="label">יתרה כוללת <button type="button" class="btn secondary small" id="editBalanceBtn" style="padding:2px 8px; font-size:.7rem; margin-inline-start:4px;">✏️ ערוך</button></div>
         <div class="value" id="qsBalance">₪0</div>
+        <div id="editBalanceForm" style="display:none; gap:6px; margin-top:8px;">
+          <input type="number" id="editBalanceInput" step="0.01" style="flex:1;">
+          <button type="button" class="btn small" id="saveBalanceBtn">שמור</button>
+        </div>
       </div>
       <div class="stat">
         <div class="label">הכנסות החודש</div>
@@ -780,7 +784,17 @@
 
   // ---------- Data layer ----------
   function defaultData() {
-    return { tx: [], hours: [], debts: [], lastRate: 0, budgets: {}, recurring: [], savings: { target: 0, current: 0 } };
+    return { tx: [], hours: [], debts: [], lastRate: 0, budgets: {}, recurring: [], savings: { target: 0, current: 0 }, totalBalance: 0 };
+  }
+
+  // totalBalance is a manually-editable running total, kept in sync with tx add/edit/delete.
+  // For backups/data created before this field existed, derive a starting value from tx history.
+  function mergeStateWithDefaults(parsed) {
+    var merged = Object.assign(defaultData(), parsed || {});
+    if (!parsed || parsed.totalBalance === undefined) {
+      merged.totalBalance = (merged.tx || []).reduce(function(s, t) { return s + (t.kind === 'in' ? t.amount : -t.amount); }, 0);
+    }
+    return merged;
   }
 
   function loadData() {
@@ -788,7 +802,7 @@
       var raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return defaultData();
       var parsed = JSON.parse(raw);
-      return Object.assign(defaultData(), parsed);
+      return mergeStateWithDefaults(parsed);
     } catch (e) {
       console.error('Failed to load data', e);
       return defaultData();
@@ -842,6 +856,12 @@
 
   function uid() {
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+
+  // Keeps the manually-editable totalBalance in sync whenever a tx is added/removed.
+  // sign = +1 to apply a tx's effect, -1 to reverse it (e.g. on delete or before an edit).
+  function applyTxToBalance(t, sign) {
+    state.totalBalance += sign * (t.kind === 'in' ? t.amount : -t.amount);
   }
 
   function todayStr() {
@@ -971,11 +991,15 @@
     if (editingTxId) {
       var existing = state.tx.find(function(t) { return t.id === editingTxId; });
       if (existing) {
+        applyTxToBalance(existing, -1);
         existing.kind = txKind; existing.amount = amount; existing.desc = desc; existing.cat = cat; existing.date = date;
+        applyTxToBalance(existing, 1);
       }
       cancelEditTx();
     } else {
-      state.tx.push({ id: uid(), kind: txKind, amount: amount, desc: desc, cat: cat, date: date });
+      var newTx = { id: uid(), kind: txKind, amount: amount, desc: desc, cat: cat, date: date };
+      state.tx.push(newTx);
+      applyTxToBalance(newTx, 1);
       document.getElementById('txAmount').value = '';
       document.getElementById('txDesc').value = '';
       document.getElementById('txDate').value = todayStr();
@@ -1040,6 +1064,8 @@
     if (!btn) return;
     var id = btn.dataset.delTx;
     confirmAction('למחוק את התנועה?', function() {
+      var removed = state.tx.find(function(t) { return t.id === id; });
+      if (removed) applyTxToBalance(removed, -1);
       state.tx = state.tx.filter(function(t) { return t.id !== id; });
       if (editingTxId === id) cancelEditTx();
       saveData();
@@ -1355,10 +1381,14 @@
     if (amt >= debt.amount) {
       var fullAmount = debt.amount;
       debt.paid = true;
-      state.tx.push({ id: uid(), kind: 'in', amount: fullAmount, desc: 'החזר חוב מ-' + debt.name, cat: 'החזר חוב', date: todayStr() });
+      var fullTx = { id: uid(), kind: 'in', amount: fullAmount, desc: 'החזר חוב מ-' + debt.name, cat: 'החזר חוב', date: todayStr() };
+      state.tx.push(fullTx);
+      applyTxToBalance(fullTx, 1);
     } else {
       debt.amount = Math.round((debt.amount - amt) * 100) / 100;
-      state.tx.push({ id: uid(), kind: 'in', amount: amt, desc: 'תשלום חלקי מ-' + debt.name, cat: 'החזר חוב', date: todayStr() });
+      var partialTx = { id: uid(), kind: 'in', amount: amt, desc: 'תשלום חלקי מ-' + debt.name, cat: 'החזר חוב', date: todayStr() };
+      state.tx.push(partialTx);
+      applyTxToBalance(partialTx, 1);
     }
     saveData();
     closePaymentModal();
@@ -1554,7 +1584,7 @@
       try {
         var parsed = JSON.parse(reader.result);
         confirmAction('שחזור מגיבוי יחליף את כל הנתונים הקיימים. להמשיך?', function() {
-          state = Object.assign(defaultData(), parsed);
+          state = mergeStateWithDefaults(parsed);
           saveData();
           renderAll();
           alert('השחזור הושלם בהצלחה');
@@ -1662,10 +1692,12 @@
     var applied = false;
     state.recurring.forEach(function(r) {
       if (r.lastAppliedMonth !== curMonthKey) {
-        state.tx.push({
+        var recTx = {
           id: uid(), kind: r.kind, amount: r.amount, desc: (r.desc || 'רשומה קבועה'),
           cat: r.cat, date: curMonthKey + '-' + String(r.day).padStart(2, '0')
-        });
+        };
+        state.tx.push(recTx);
+        applyTxToBalance(recTx, 1);
         r.lastAppliedMonth = curMonthKey;
         applied = true;
       }
@@ -1710,8 +1742,25 @@
   }
 
   // ---------- Quick stats strip (always visible, regardless of active tab) ----------
+  document.getElementById('editBalanceBtn').addEventListener('click', function() {
+    var form = document.getElementById('editBalanceForm');
+    var isOpen = form.style.display === 'flex';
+    if (isOpen) { form.style.display = 'none'; return; }
+    document.getElementById('editBalanceInput').value = state.totalBalance;
+    form.style.display = 'flex';
+  });
+
+  document.getElementById('saveBalanceBtn').addEventListener('click', function() {
+    var v = parseFloat(document.getElementById('editBalanceInput').value);
+    if (isNaN(v)) { alert('יש להזין מספר תקין'); return; }
+    state.totalBalance = v;
+    saveData();
+    document.getElementById('editBalanceForm').style.display = 'none';
+    renderQuickStats();
+  });
+
   function renderQuickStats() {
-    var balance = state.tx.reduce(function(s, t) { return s + (t.kind === 'in' ? t.amount : -t.amount); }, 0);
+    var balance = state.totalBalance;
 
     var curMonthKey = todayStr().slice(0, 7);
     var curMonthTx = state.tx.filter(function(t) { return t.date && t.date.slice(0, 7) === curMonthKey; });
