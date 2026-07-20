@@ -27,6 +27,12 @@
     --warn-bg: rgba(251,191,36,.14);
     --radius: 14px;
   }
+
+  :root[data-theme="blue"] { --accent: #0ea5e9; --accent-2: #38bdf8; }
+  :root[data-theme="purple"] { --accent: #a855f7; --accent-2: #e879f9; }
+  :root[data-theme="orange"] { --accent: #f97316; --accent-2: #fb923c; }
+  :root[data-theme="teal"] { --accent: #14b8a6; --accent-2: #2dd4bf; }
+  :root[data-theme="rose"] { --accent: #f43f5e; --accent-2: #fb7185; }
   * { box-sizing: border-box; }
   html, body {
     margin: 0; padding: 0;
@@ -65,7 +71,7 @@
   header.app-header h1 {
     margin: 0 0 6px;
     font-size: 1.5rem;
-    background: linear-gradient(90deg, var(--accent-2), var(--green));
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -126,23 +132,21 @@
   }
 
   @media (max-width: 860px) {
-    .app-layout { flex-direction: column; }
     .sidebar {
-      width: 100%;
-      height: auto;
-      position: static;
-      flex-direction: row;
-      align-items: center;
+      width: 76px;
+      padding: 16px 6px;
       gap: 14px;
-      padding: 12px 14px;
-      border-inline-start: none;
-      border-bottom: 1px solid var(--border);
-      overflow-x: auto;
     }
     .sidebar-header, .sidebar-footer { display: none; }
-    nav.tabs { flex-direction: row; }
-    nav.tabs button { border-inline-start: none; border-bottom: 3px solid transparent; border-radius: 0; }
-    nav.tabs button.active { background: none; border-bottom-color: var(--accent); }
+    nav.tabs button {
+      flex-direction: column;
+      gap: 4px;
+      padding: 10px 2px;
+      text-align: center;
+      white-space: normal;
+    }
+    nav.tabs button .icon { font-size: 1.3rem; }
+    nav.tabs button .label-text { font-size: .62rem; line-height: 1.15; }
     footer.app-footer { display: block; }
   }
 
@@ -338,7 +342,9 @@
   @media (max-width: 480px) {
     header.app-header h1 { font-size: 1.3rem; }
     .card { padding: 12px; }
-    nav.tabs button { padding: 8px 10px; font-size: .85rem; }
+    .sidebar { width: 64px; }
+    nav.tabs button .icon { font-size: 1.15rem; }
+    nav.tabs button .label-text { font-size: .56rem; }
   }
 
   .progress-track {
@@ -363,6 +369,22 @@
   }
 
   .row-item.over-budget .main .amt { color: var(--red); }
+
+  .theme-swatches {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+  .theme-swatch {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    cursor: pointer;
+    padding: 0;
+  }
+  .theme-swatch.selected { border-color: var(--text); }
 </style>
 </head>
 <body>
@@ -376,12 +398,12 @@
     </div>
 
     <nav class="tabs">
-      <button class="tab-btn active" data-tab="tx"><span class="icon">💳</span> תנועות</button>
-      <button class="tab-btn" data-tab="hours"><span class="icon">⏱️</span> שעות עבודה</button>
-      <button class="tab-btn" data-tab="debts"><span class="icon">🤝</span> חובות</button>
-      <button class="tab-btn" data-tab="summary"><span class="icon">📊</span> סיכום חודשי</button>
-      <button class="tab-btn" data-tab="advanced"><span class="icon">🎯</span> תקציב וחיסכון</button>
-      <button class="tab-btn" data-tab="settings"><span class="icon">⚙️</span> גיבוי והתראות</button>
+      <button class="tab-btn active" data-tab="tx"><span class="icon">💳</span><span class="label-text">תנועות</span></button>
+      <button class="tab-btn" data-tab="hours"><span class="icon">⏱️</span><span class="label-text">שעות עבודה</span></button>
+      <button class="tab-btn" data-tab="debts"><span class="icon">🤝</span><span class="label-text">חובות</span></button>
+      <button class="tab-btn" data-tab="summary"><span class="icon">📊</span><span class="label-text">סיכום חודשי</span></button>
+      <button class="tab-btn" data-tab="advanced"><span class="icon">🎯</span><span class="label-text">תקציב וחיסכון</span></button>
+      <button class="tab-btn" data-tab="settings"><span class="icon">⚙️</span><span class="label-text">גיבוי והתראות</span></button>
     </nav>
 
     <div class="sidebar-footer">
@@ -711,6 +733,19 @@
   <!-- TAB: גיבוי -->
   <section id="tab-settings" class="tab-content">
     <div class="card">
+      <h2>🎨 ערכת נושא</h2>
+      <p style="color:var(--text-dim); font-size:.9rem;">בחר צבע מבטא לאפליקציה.</p>
+      <div class="theme-swatches" id="themeSwatches">
+        <button type="button" class="theme-swatch" data-theme="default" style="background:linear-gradient(135deg,#6366f1,#818cf8);" title="ברירת מחדל"></button>
+        <button type="button" class="theme-swatch" data-theme="blue" style="background:linear-gradient(135deg,#0ea5e9,#38bdf8);" title="כחול אוקיינוס"></button>
+        <button type="button" class="theme-swatch" data-theme="purple" style="background:linear-gradient(135deg,#a855f7,#e879f9);" title="סגול מלכותי"></button>
+        <button type="button" class="theme-swatch" data-theme="orange" style="background:linear-gradient(135deg,#f97316,#fb923c);" title="כתום שקיעה"></button>
+        <button type="button" class="theme-swatch" data-theme="teal" style="background:linear-gradient(135deg,#14b8a6,#2dd4bf);" title="טורקיז"></button>
+        <button type="button" class="theme-swatch" data-theme="rose" style="background:linear-gradient(135deg,#f43f5e,#fb7185);" title="ורוד"></button>
+      </div>
+    </div>
+
+    <div class="card">
       <h2>גיבוי ושחזור נתונים</h2>
       <p style="color:var(--text-dim); font-size:.9rem;">כל הנתונים נשמרים במכשיר שלך בלבד (localStorage). מומלץ לייצא גיבוי מדי פעם.</p>
       <div class="backup-actions">
@@ -784,7 +819,7 @@
 
   // ---------- Data layer ----------
   function defaultData() {
-    return { tx: [], hours: [], debts: [], lastRate: 0, budgets: {}, recurring: [], savings: { target: 0, current: 0 }, totalBalance: 0 };
+    return { tx: [], hours: [], debts: [], lastRate: 0, budgets: {}, recurring: [], savings: { target: 0, current: 0 }, totalBalance: 0, theme: 'default' };
   }
 
   // totalBalance is a manually-editable running total, kept in sync with tx add/edit/delete.
@@ -853,6 +888,27 @@
   }
 
   var state = loadData();
+
+  // ---------- Theme ----------
+  function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+  }
+  applyTheme(state.theme);
+
+  function renderThemeSwatches() {
+    document.querySelectorAll('.theme-swatch').forEach(function(btn) {
+      btn.classList.toggle('selected', btn.dataset.theme === state.theme);
+    });
+  }
+
+  document.getElementById('themeSwatches').addEventListener('click', function(e) {
+    var btn = e.target.closest('button[data-theme]');
+    if (!btn) return;
+    state.theme = btn.dataset.theme;
+    applyTheme(state.theme);
+    saveData();
+    renderThemeSwatches();
+  });
 
   function uid() {
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -1790,6 +1846,8 @@
     renderBudgetInputs();
     renderRecurring();
     renderSavings();
+    applyTheme(state.theme);
+    renderThemeSwatches();
   }
 
   applyRecurring();
