@@ -422,6 +422,24 @@
   }
   .sidebar-toggle-fab.show { display: block; }
 
+  .sidebar-collapse-btn {
+    align-self: flex-end;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--card-2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: .9rem;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .sidebar-collapse-btn:hover { background: var(--border); color: var(--text); }
+
+  @media (max-width: 860px) {
+    .sidebar-collapse-btn { align-self: center; }
+  }
+
   .toggle-row {
     display: flex;
     align-items: center;
@@ -436,6 +454,8 @@
 <button id="sidebarToggleBtn" class="sidebar-toggle-fab" title="הצג סרגל ניווט">☰</button>
 <div class="app-layout">
   <aside class="sidebar">
+    <button type="button" id="sidebarCollapseBtn" class="sidebar-collapse-btn" title="הסתר סרגל ניווט">✕</button>
+
     <div class="sidebar-header">
       <header class="app-header">
         <h1>💰 ניהול כספים</h1>
@@ -1000,6 +1020,13 @@
     saveData();
     applySidebarVisibility();
     document.getElementById('hideSidebarToggle').checked = false;
+  });
+
+  document.getElementById('sidebarCollapseBtn').addEventListener('click', function() {
+    state.sidebarHidden = true;
+    saveData();
+    applySidebarVisibility();
+    document.getElementById('hideSidebarToggle').checked = true;
   });
 
   function uid() {
