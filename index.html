@@ -33,6 +33,22 @@
   :root[data-theme="orange"] { --accent: #f97316; --accent-2: #fb923c; }
   :root[data-theme="teal"] { --accent: #14b8a6; --accent-2: #2dd4bf; }
   :root[data-theme="rose"] { --accent: #f43f5e; --accent-2: #fb7185; }
+
+  :root[data-mode="light"] {
+    --bg: #f3f5f9;
+    --bg-alt: #e9edf5;
+    --card: #ffffff;
+    --card-2: #eef1f7;
+    --border: #d7dee9;
+    --text: #1a2033;
+    --text-dim: #5b6478;
+    --green: #059669;
+    --green-bg: rgba(5,150,105,.10);
+    --red: #dc2626;
+    --red-bg: rgba(220,38,38,.08);
+    --warn: #b45309;
+    --warn-bg: rgba(180,83,9,.12);
+  }
   * { box-sizing: border-box; }
   html, body {
     margin: 0; padding: 0;
@@ -385,9 +401,39 @@
     padding: 0;
   }
   .theme-swatch.selected { border-color: var(--text); }
+
+  .sidebar.hidden { display: none; }
+
+  .sidebar-toggle-fab {
+    position: fixed;
+    top: 14px;
+    inset-inline-end: 14px;
+    z-index: 500;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: none;
+    box-shadow: 0 2px 10px rgba(0,0,0,.35);
+  }
+  .sidebar-toggle-fab.show { display: block; }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: .9rem;
+  }
+  .toggle-row input { width: auto; }
 </style>
 </head>
 <body>
+<button id="sidebarToggleBtn" class="sidebar-toggle-fab" title="הצג סרגל ניווט">☰</button>
 <div class="app-layout">
   <aside class="sidebar">
     <div class="sidebar-header">
@@ -743,6 +789,18 @@
         <button type="button" class="theme-swatch" data-theme="teal" style="background:linear-gradient(135deg,#14b8a6,#2dd4bf);" title="טורקיז"></button>
         <button type="button" class="theme-swatch" data-theme="rose" style="background:linear-gradient(135deg,#f43f5e,#fb7185);" title="ורוד"></button>
       </div>
+      <label class="toggle-row" style="margin-top:16px;">
+        <input type="checkbox" id="lightModeToggle">
+        <span>☀️ מצב בהיר</span>
+      </label>
+    </div>
+
+    <div class="card">
+      <h2>🧭 תצוגת ניווט</h2>
+      <label class="toggle-row">
+        <input type="checkbox" id="hideSidebarToggle">
+        <span>הסתר את סרגל הניווט הצדדי (יופיע כפתור צף להחזרתו)</span>
+      </label>
     </div>
 
     <div class="card">
@@ -819,7 +877,7 @@
 
   // ---------- Data layer ----------
   function defaultData() {
-    return { tx: [], hours: [], debts: [], lastRate: 0, budgets: {}, recurring: [], savings: { target: 0, current: 0 }, totalBalance: 0, theme: 'default' };
+    return { tx: [], hours: [], debts: [], lastRate: 0, budgets: {}, recurring: [], savings: { target: 0, current: 0 }, totalBalance: 0, theme: 'default', mode: 'dark', sidebarHidden: false };
   }
 
   // totalBalance is a manually-editable running total, kept in sync with tx add/edit/delete.
@@ -889,7 +947,7 @@
 
   var state = loadData();
 
-  // ---------- Theme ----------
+  // ---------- Theme (accent color) ----------
   function applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
   }
@@ -908,6 +966,40 @@
     applyTheme(state.theme);
     saveData();
     renderThemeSwatches();
+  });
+
+  // ---------- Light / dark mode ----------
+  function applyMode(mode) {
+    document.documentElement.setAttribute('data-mode', mode);
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', mode === 'light' ? '#f3f5f9' : '#0f1420');
+  }
+  applyMode(state.mode);
+
+  document.getElementById('lightModeToggle').addEventListener('change', function(e) {
+    state.mode = e.target.checked ? 'light' : 'dark';
+    applyMode(state.mode);
+    saveData();
+  });
+
+  // ---------- Sidebar visibility ----------
+  function applySidebarVisibility() {
+    document.querySelector('.sidebar').classList.toggle('hidden', state.sidebarHidden);
+    document.getElementById('sidebarToggleBtn').classList.toggle('show', state.sidebarHidden);
+  }
+  applySidebarVisibility();
+
+  document.getElementById('hideSidebarToggle').addEventListener('change', function(e) {
+    state.sidebarHidden = e.target.checked;
+    saveData();
+    applySidebarVisibility();
+  });
+
+  document.getElementById('sidebarToggleBtn').addEventListener('click', function() {
+    state.sidebarHidden = false;
+    saveData();
+    applySidebarVisibility();
+    document.getElementById('hideSidebarToggle').checked = false;
   });
 
   function uid() {
@@ -1848,6 +1940,10 @@
     renderSavings();
     applyTheme(state.theme);
     renderThemeSwatches();
+    applyMode(state.mode);
+    document.getElementById('lightModeToggle').checked = state.mode === 'light';
+    applySidebarVisibility();
+    document.getElementById('hideSidebarToggle').checked = state.sidebarHidden;
   }
 
   applyRecurring();
