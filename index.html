@@ -1104,6 +1104,17 @@
     markSynced();
   }
 
+  // בהתנתקות: מאפסים את התצוגה המקומית בלבד. הנתונים בענן נשארים בדיוק כפי שהם -
+  // לא קוראים ל-saveData()/pushStateToCloud() כאן, כדי לא לדרוס אותם בערכי ברירת מחדל ריקים.
+  function resetLocalStateOnSignOut() {
+    state = defaultData();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    syncDebtsToIndexedDB();
+    syncEmployersToIndexedDB();
+    lastSyncTime = null;
+    renderAll();
+  }
+
   function detachCloudListener() {
     if (unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
   }
@@ -1114,9 +1125,14 @@
     docRef.get().then(function(snap) {
       if (snap.exists && snap.data()) {
         if (canonicalJSON(snap.data()) !== canonicalJSON(state)) {
-          confirmAction('נמצאו נתונים שמורים בענן מהחשבון שלך. לטעון אותם ולהחליף את הנתונים במכשיר הזה?', function() {
+          if (canonicalJSON(state) === canonicalJSON(defaultData())) {
+            // המכשיר ריק (למשל אחרי התנתקות) - אין סיכון לאבד נתונים, טוענים בשקט
             applyIncomingCloudState(snap.data());
-          });
+          } else {
+            confirmAction('נמצאו נתונים שמורים בענן מהחשבון שלך. לטעון אותם ולהחליף את הנתונים במכשיר הזה?', function() {
+              applyIncomingCloudState(snap.data());
+            });
+          }
         } else {
           markSynced();
         }
@@ -1232,12 +1248,14 @@
       firebaseDb = firebase.firestore();
       firebaseAuth.getRedirectResult().catch(function(e) { console.error('Redirect sign-in failed', e); });
       firebaseAuth.onAuthStateChanged(function(user) {
+        var wasSignedIn = cloudUser !== null;
         cloudUser = user;
         updateCloudSyncUI();
         if (user) {
           attachCloudListener(user.uid);
         } else {
           detachCloudListener();
+          if (wasSignedIn) resetLocalStateOnSignOut();
         }
       });
     } catch (e) {
