@@ -1052,7 +1052,12 @@
   document.getElementById('cloudSignInBtn').addEventListener('click', function() {
     if (!firebaseAuth) { alert('סנכרון ענן לא זמין (נדרש חיבור לאינטרנט)'); return; }
     var provider = new firebase.auth.GoogleAuthProvider();
-    firebaseAuth.signInWithRedirect(provider);
+    firebaseAuth.signInWithPopup(provider).catch(function(e) {
+      console.error('Popup sign-in failed, trying redirect instead', e);
+      if (e && e.code !== 'auth/cancelled-popup-request' && e.code !== 'auth/popup-closed-by-user') {
+        firebaseAuth.signInWithRedirect(provider);
+      }
+    });
   });
 
   document.getElementById('cloudSignOutBtn').addEventListener('click', function() {
