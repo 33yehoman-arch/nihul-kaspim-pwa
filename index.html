@@ -910,6 +910,7 @@
       <div class="backup-actions">
         <button class="btn" id="exportBtn">📤 ייצוא גיבוי (JSON)</button>
         <button class="btn secondary" id="importBtn">📥 שחזור מגיבוי</button>
+        <button class="btn secondary" id="exportExcelBtn">📊 ייצוא לאקסל</button>
         <input type="file" id="importFile" accept="application/json" style="display:none;">
       </div>
     </div>
@@ -966,6 +967,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
@@ -1999,6 +2001,97 @@
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   });
+
+  document.getElementById('exportExcelBtn').addEventListener('click', function() {
+    if (typeof XLSX === 'undefined') { alert('הספרייה לייצוא לאקסל לא נטענה (נדרש חיבור לאינטרנט)'); return; }
+    exportToExcel();
+  });
+
+  function exportToExcel() {
+    var wb = XLSX.utils.book_new();
+    wb.Workbook = { Views: [{ RTL: true }] };
+
+    var txRows = state.tx.slice()
+      .sort(function(a, b) { return b.date.localeCompare(a.date); })
+      .map(function(t) {
+        return {
+          'תאריך': t.date,
+          'סוג': t.kind === 'in' ? 'הכנסה' : 'הוצאה',
+          'סכום': t.amount,
+          'קטגוריה': t.cat,
+          'תיאור': t.desc || ''
+        };
+      });
+    var wsTx = XLSX.utils.json_to_sheet(txRows);
+    wsTx['!cols'] = [{ wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 14 }, { wch: 28 }];
+    XLSX.utils.book_append_sheet(wb, wsTx, 'תנועות');
+
+    var hoursRows = state.hours.slice()
+      .sort(function(a, b) { return b.date.localeCompare(a.date); })
+      .map(function(h) {
+        return {
+          'תאריך': h.date,
+          'מקום/לקוח': h.where || '',
+          'שעות': h.hours,
+          'תעריף לשעה': h.rate,
+          'שכר': Math.round(h.hours * h.rate * 100) / 100
+        };
+      });
+    var wsHours = XLSX.utils.json_to_sheet(hoursRows);
+    wsHours['!cols'] = [{ wch: 12 }, { wch: 18 }, { wch: 9 }, { wch: 12 }, { wch: 12 }];
+    XLSX.utils.book_append_sheet(wb, wsHours, 'שעות עבודה');
+
+    var debtRows = state.debts.slice()
+      .sort(function(a, b) { return (a.due || '9999').localeCompare(b.due || '9999'); })
+      .map(function(d) {
+        return {
+          'שם': d.name,
+          'סכום': d.amount,
+          'סטטוס': d.paid ? 'שולם' : 'פתוח',
+          'תאריך יעד': d.due || '',
+          'הערה': d.note || ''
+        };
+      });
+    var wsDebts = XLSX.utils.json_to_sheet(debtRows);
+    wsDebts['!cols'] = [{ wch: 16 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 24 }];
+    XLSX.utils.book_append_sheet(wb, wsDebts, 'חובות');
+
+    var monthSet = {};
+    state.tx.forEach(function(t) { if (t.date) monthSet[t.date.slice(0, 7)] = true; });
+    state.hours.forEach(function(h) { if (h.date) monthSet[h.date.slice(0, 7)] = true; });
+    var months = Object.keys(monthSet).sort();
+    var summaryRows = months.map(function(mk) {
+      var monthTx = state.tx.filter(function(t) { return t.date && t.date.slice(0, 7) === mk; });
+      var income = monthTx.filter(function(t) { return t.kind === 'in'; }).reduce(function(s, t) { return s + t.amount; }, 0);
+      var expense = monthTx.filter(function(t) { return t.kind === 'out'; }).reduce(function(s, t) { return s + t.amount; }, 0);
+      var monthHours = state.hours.filter(function(h) { return h.date && h.date.slice(0, 7) === mk; });
+      var totalHours = monthHours.reduce(function(s, h) { return s + h.hours; }, 0);
+      var totalWage = monthHours.reduce(function(s, h) { return s + h.hours * h.rate; }, 0);
+      var y = mk.slice(0, 4), m = parseInt(mk.slice(5, 7), 10) - 1;
+      return {
+        'חודש': MONTH_NAMES[m] + ' ' + y,
+        'הכנסות': income,
+        'הוצאות': expense,
+        'מאזן': income - expense,
+        'שעות עבודה': totalHours,
+        'שכר': Math.round(totalWage * 100) / 100
+      };
+    });
+    var wsSummary = XLSX.utils.json_to_sheet(summaryRows);
+    wsSummary['!cols'] = [{ wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
+    XLSX.utils.book_append_sheet(wb, wsSummary, 'סיכום חודשי');
+
+    var budgetRows = EXPENSE_CATS.map(function(cat) {
+      return { 'קטגוריה': cat, 'תקציב חודשי (₪)': state.budgets[cat] != null ? state.budgets[cat] : 'ללא הגבלה' };
+    });
+    budgetRows.push({ 'קטגוריה': 'יעד חיסכון (₪)', 'תקציב חודשי (₪)': state.savings.target });
+    budgetRows.push({ 'קטגוריה': 'נחסך כרגע (₪)', 'תקציב חודשי (₪)': state.savings.current });
+    var wsBudget = XLSX.utils.json_to_sheet(budgetRows);
+    wsBudget['!cols'] = [{ wch: 20 }, { wch: 16 }];
+    XLSX.utils.book_append_sheet(wb, wsBudget, 'תקציב וחיסכון');
+
+    XLSX.writeFile(wb, 'נתונים-כספים-' + todayStr() + '.xlsx');
+  }
 
   document.getElementById('importBtn').addEventListener('click', function() {
     document.getElementById('importFile').click();
