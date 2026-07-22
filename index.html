@@ -1067,6 +1067,15 @@
   var cloudUser = null;
   var unsubscribeSnapshot = null;
 
+  // Order-independent equality check: Firestore doesn't guarantee preserving
+  // object key order on round-trip, so plain JSON.stringify comparison isn't reliable here.
+  function canonicalJSON(obj) {
+    if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
+    if (Array.isArray(obj)) return '[' + obj.map(canonicalJSON).join(',') + ']';
+    var keys = Object.keys(obj).sort();
+    return '{' + keys.map(function(k) { return JSON.stringify(k) + ':' + canonicalJSON(obj[k]); }).join(',') + '}';
+  }
+
   function pushStateToCloud() {
     if (!cloudUser || !firebaseDb) return;
     firebaseDb.collection('users').doc(cloudUser.uid).set(state).catch(function(e) {
@@ -1091,7 +1100,7 @@
     var docRef = firebaseDb.collection('users').doc(uid);
     docRef.get().then(function(snap) {
       if (snap.exists && snap.data()) {
-        if (JSON.stringify(snap.data()) !== JSON.stringify(state)) {
+        if (canonicalJSON(snap.data()) !== canonicalJSON(state)) {
           confirmAction('נמצאו נתונים שמורים בענן מהחשבון שלך. לטעון אותם ולהחליף את הנתונים במכשיר הזה?', function() {
             applyIncomingCloudState(snap.data());
           });
@@ -1102,7 +1111,7 @@
       }
       unsubscribeSnapshot = docRef.onSnapshot(function(snap2) {
         if (!snap2.exists || !snap2.data()) return;
-        if (JSON.stringify(snap2.data()) === JSON.stringify(state)) return;
+        if (canonicalJSON(snap2.data()) === canonicalJSON(state)) return;
         applyIncomingCloudState(snap2.data());
       });
     }).catch(function(e) { console.error('Cloud fetch failed', e); });
