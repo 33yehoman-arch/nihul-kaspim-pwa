@@ -824,6 +824,16 @@
     </div>
 
     <div class="card">
+      <h2>☁️ סנכרון בין מכשירים</h2>
+      <p style="color:var(--text-dim); font-size:.9rem;">התחבר עם חשבון Google כדי לסנכרן את הנתונים אוטומטית בין כל המכשירים שמחוברים לאותו חשבון. בלי התחברות, הנתונים נשמרים רק במכשיר הזה.</p>
+      <p id="cloudSyncStatus" style="font-weight:600;">לא מחובר</p>
+      <div class="backup-actions">
+        <button class="btn" id="cloudSignInBtn">🔵 התחבר עם Google</button>
+        <button class="btn secondary" id="cloudSignOutBtn" style="display:none;">התנתק</button>
+      </div>
+    </div>
+
+    <div class="card">
       <h2>גיבוי ושחזור נתונים</h2>
       <p style="color:var(--text-dim); font-size:.9rem;">כל הנתונים נשמרים במכשיר שלך בלבד (localStorage). מומלץ לייצא גיבוי מדי פעם.</p>
       <div class="backup-actions">
@@ -885,6 +895,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
 <script>
 (function() {
   'use strict';
@@ -926,6 +939,7 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     syncDebtsToIndexedDB();
     syncEmployersToIndexedDB();
+    pushStateToCloud();
   }
 
   // ---------- IndexedDB sync (used by the service worker for background reminders) ----------
@@ -966,6 +980,104 @@
   }
 
   var state = loadData();
+
+  // ---------- Cloud sync (Firebase: Google sign-in + Firestore) ----------
+  var FIREBASE_CONFIG = {
+    apiKey: "AIzaSyAew9iGxtd0pMHfpSIs0G5Ed71Pu4PlTe4",
+    authDomain: "nihul-kaspim-sync.firebaseapp.com",
+    projectId: "nihul-kaspim-sync",
+    storageBucket: "nihul-kaspim-sync.firebasestorage.app",
+    messagingSenderId: "879168914654",
+    appId: "1:879168914654:web:39e74fdbddf44884f7ae4f"
+  };
+
+  var firebaseAuth = null;
+  var firebaseDb = null;
+  var cloudUser = null;
+  var unsubscribeSnapshot = null;
+
+  function pushStateToCloud() {
+    if (!cloudUser || !firebaseDb) return;
+    firebaseDb.collection('users').doc(cloudUser.uid).set(state).catch(function(e) {
+      console.error('Cloud sync failed', e);
+    });
+  }
+
+  function applyIncomingCloudState(remoteData) {
+    state = mergeStateWithDefaults(remoteData);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    syncDebtsToIndexedDB();
+    syncEmployersToIndexedDB();
+    renderAll();
+  }
+
+  function detachCloudListener() {
+    if (unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
+  }
+
+  function attachCloudListener(uid) {
+    detachCloudListener();
+    var docRef = firebaseDb.collection('users').doc(uid);
+    docRef.get().then(function(snap) {
+      if (snap.exists && snap.data()) {
+        confirmAction('נמצאו נתונים שמורים בענן מהחשבון שלך. לטעון אותם ולהחליף את הנתונים במכשיר הזה?', function() {
+          applyIncomingCloudState(snap.data());
+        });
+      } else {
+        pushStateToCloud();
+      }
+      unsubscribeSnapshot = docRef.onSnapshot(function(snap2) {
+        if (!snap2.exists || !snap2.data()) return;
+        if (JSON.stringify(snap2.data()) === JSON.stringify(state)) return;
+        applyIncomingCloudState(snap2.data());
+      });
+    }).catch(function(e) { console.error('Cloud fetch failed', e); });
+  }
+
+  function updateCloudSyncUI() {
+    var statusEl = document.getElementById('cloudSyncStatus');
+    var signInBtn = document.getElementById('cloudSignInBtn');
+    var signOutBtn = document.getElementById('cloudSignOutBtn');
+    if (cloudUser) {
+      statusEl.textContent = 'מחובר כ-' + cloudUser.email;
+      signInBtn.style.display = 'none';
+      signOutBtn.style.display = 'inline-block';
+    } else {
+      statusEl.textContent = 'לא מחובר - הנתונים נשמרים רק במכשיר הזה';
+      signInBtn.style.display = 'inline-block';
+      signOutBtn.style.display = 'none';
+    }
+  }
+
+  document.getElementById('cloudSignInBtn').addEventListener('click', function() {
+    if (!firebaseAuth) { alert('סנכרון ענן לא זמין (נדרש חיבור לאינטרנט)'); return; }
+    var provider = new firebase.auth.GoogleAuthProvider();
+    firebaseAuth.signInWithRedirect(provider);
+  });
+
+  document.getElementById('cloudSignOutBtn').addEventListener('click', function() {
+    if (firebaseAuth) firebaseAuth.signOut();
+  });
+
+  if (typeof firebase !== 'undefined' && window.location.protocol !== 'file:') {
+    try {
+      firebase.initializeApp(FIREBASE_CONFIG);
+      firebaseAuth = firebase.auth();
+      firebaseDb = firebase.firestore();
+      firebaseAuth.getRedirectResult().catch(function(e) { console.error('Redirect sign-in failed', e); });
+      firebaseAuth.onAuthStateChanged(function(user) {
+        cloudUser = user;
+        updateCloudSyncUI();
+        if (user) {
+          attachCloudListener(user.uid);
+        } else {
+          detachCloudListener();
+        }
+      });
+    } catch (e) {
+      console.error('Firebase init failed', e);
+    }
+  }
 
   // ---------- Theme (accent color) ----------
   function applyTheme(theme) {
