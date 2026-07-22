@@ -422,6 +422,67 @@
   }
   .sidebar-toggle-fab.show { display: block; }
 
+  .account-widget {
+    position: fixed;
+    bottom: 16px;
+    inset-inline-end: 16px;
+    z-index: 550;
+  }
+  .account-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    cursor: pointer;
+    background-color: var(--card-2);
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    color: var(--text);
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    box-shadow: 0 2px 10px rgba(0,0,0,.35);
+  }
+  .account-dropdown {
+    position: absolute;
+    bottom: 52px;
+    inset-inline-end: 0;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    min-width: 220px;
+    max-width: 280px;
+    box-shadow: 0 4px 24px rgba(0,0,0,.45);
+    display: none;
+  }
+  .account-dropdown.open { display: block; }
+  .account-info {
+    font-size: .82rem;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+    word-break: break-all;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .account-dropdown-btn {
+    display: block;
+    width: 100%;
+    text-align: start;
+    background: none;
+    border: none;
+    color: var(--text);
+    padding: 9px 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: .88rem;
+    font-family: inherit;
+  }
+  .account-dropdown-btn:hover { background: var(--card-2); }
+
   .sidebar-collapse-btn {
     align-self: flex-end;
     width: 30px;
@@ -452,6 +513,16 @@
 </head>
 <body>
 <button id="sidebarToggleBtn" class="sidebar-toggle-fab" title="הצג סרגל ניווט">☰</button>
+
+<div class="account-widget" id="accountWidget">
+  <button type="button" class="account-avatar" id="accountAvatarBtn" title="חשבון">👤</button>
+  <div class="account-dropdown" id="accountDropdown">
+    <div class="account-info" id="accountInfo">לא מחובר</div>
+    <button type="button" class="account-dropdown-btn" id="accountSignInItem">🔵 התחבר עם Google</button>
+    <button type="button" class="account-dropdown-btn" id="accountSwitchItem" style="display:none;">🔄 החלף חשבון</button>
+    <button type="button" class="account-dropdown-btn" id="accountSignOutItem" style="display:none;">🚪 התנתק</button>
+  </div>
+</div>
 <div class="app-layout">
   <aside class="sidebar">
     <button type="button" id="sidebarCollapseBtn" class="sidebar-collapse-btn" title="הסתר סרגל ניווט">✕</button>
@@ -1047,21 +1118,74 @@
       signInBtn.style.display = 'inline-block';
       signOutBtn.style.display = 'none';
     }
+    updateAccountWidget();
   }
 
-  document.getElementById('cloudSignInBtn').addEventListener('click', function() {
+  function startGoogleSignIn(forceAccountChooser) {
     if (!firebaseAuth) { alert('סנכרון ענן לא זמין (נדרש חיבור לאינטרנט)'); return; }
     var provider = new firebase.auth.GoogleAuthProvider();
+    if (forceAccountChooser) provider.setCustomParameters({ prompt: 'select_account' });
     firebaseAuth.signInWithPopup(provider).catch(function(e) {
       console.error('Popup sign-in failed, trying redirect instead', e);
       if (e && e.code !== 'auth/cancelled-popup-request' && e.code !== 'auth/popup-closed-by-user') {
         firebaseAuth.signInWithRedirect(provider);
       }
     });
-  });
+  }
 
-  document.getElementById('cloudSignOutBtn').addEventListener('click', function() {
+  function doSignOut() {
     if (firebaseAuth) firebaseAuth.signOut();
+  }
+
+  document.getElementById('cloudSignInBtn').addEventListener('click', function() { startGoogleSignIn(false); });
+  document.getElementById('cloudSignOutBtn').addEventListener('click', doSignOut);
+
+  // ---------- Account avatar widget (quick access, account switching) ----------
+  function updateAccountWidget() {
+    var avatarBtn = document.getElementById('accountAvatarBtn');
+    var infoEl = document.getElementById('accountInfo');
+    var signInItem = document.getElementById('accountSignInItem');
+    var switchItem = document.getElementById('accountSwitchItem');
+    var signOutItem = document.getElementById('accountSignOutItem');
+
+    if (cloudUser) {
+      avatarBtn.textContent = '';
+      avatarBtn.style.backgroundImage = cloudUser.photoURL ? 'url(' + cloudUser.photoURL + ')' : 'none';
+      if (!cloudUser.photoURL) avatarBtn.textContent = '👤';
+      infoEl.textContent = (cloudUser.displayName || '') + '\n' + cloudUser.email;
+      infoEl.style.whiteSpace = 'pre-line';
+      signInItem.style.display = 'none';
+      switchItem.style.display = 'block';
+      signOutItem.style.display = 'block';
+    } else {
+      avatarBtn.style.backgroundImage = 'none';
+      avatarBtn.textContent = '👤';
+      infoEl.textContent = 'לא מחובר';
+      signInItem.style.display = 'block';
+      switchItem.style.display = 'none';
+      signOutItem.style.display = 'none';
+    }
+  }
+
+  document.getElementById('accountAvatarBtn').addEventListener('click', function(e) {
+    e.stopPropagation();
+    document.getElementById('accountDropdown').classList.toggle('open');
+  });
+  document.addEventListener('click', function(e) {
+    var widget = document.getElementById('accountWidget');
+    if (!widget.contains(e.target)) document.getElementById('accountDropdown').classList.remove('open');
+  });
+  document.getElementById('accountSignInItem').addEventListener('click', function() {
+    document.getElementById('accountDropdown').classList.remove('open');
+    startGoogleSignIn(true);
+  });
+  document.getElementById('accountSwitchItem').addEventListener('click', function() {
+    document.getElementById('accountDropdown').classList.remove('open');
+    startGoogleSignIn(true);
+  });
+  document.getElementById('accountSignOutItem').addEventListener('click', function() {
+    document.getElementById('accountDropdown').classList.remove('open');
+    doSignOut();
   });
 
   if (typeof firebase !== 'undefined' && window.location.protocol !== 'file:') {
