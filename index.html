@@ -1091,9 +1091,12 @@
     var docRef = firebaseDb.collection('users').doc(uid);
     docRef.get().then(function(snap) {
       if (snap.exists && snap.data()) {
-        confirmAction('נמצאו נתונים שמורים בענן מהחשבון שלך. לטעון אותם ולהחליף את הנתונים במכשיר הזה?', function() {
-          applyIncomingCloudState(snap.data());
-        });
+        if (JSON.stringify(snap.data()) !== JSON.stringify(state)) {
+          confirmAction('נמצאו נתונים שמורים בענן מהחשבון שלך. לטעון אותם ולהחליף את הנתונים במכשיר הזה?', function() {
+            applyIncomingCloudState(snap.data());
+          });
+        }
+        // אם הנתונים כבר זהים (המכשיר כבר מסונכרן), אין צורך לשאול שוב
       } else {
         pushStateToCloud();
       }
