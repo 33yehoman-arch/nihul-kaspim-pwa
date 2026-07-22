@@ -518,6 +518,7 @@
   <button type="button" class="account-avatar" id="accountAvatarBtn" title="חשבון">👤</button>
   <div class="account-dropdown" id="accountDropdown">
     <div class="account-info" id="accountInfo">לא מחובר</div>
+    <div id="accountSyncLine" style="font-size:.74rem; color:var(--text-dim); margin-top:-6px; margin-bottom:10px; display:none;"></div>
     <button type="button" class="account-dropdown-btn" id="accountSignInItem">🔵 התחבר עם Google</button>
     <button type="button" class="account-dropdown-btn" id="accountSwitchItem" style="display:none;">🔄 החלף חשבון</button>
     <button type="button" class="account-dropdown-btn" id="accountSignOutItem" style="display:none;">🚪 התנתק</button>
@@ -1078,9 +1079,18 @@
     return '{' + keys.map(function(k) { return JSON.stringify(k) + ':' + canonicalJSON(obj[k]); }).join(',') + '}';
   }
 
+  var lastSyncTime = null;
+
+  function markSynced() {
+    lastSyncTime = new Date();
+    updateCloudSyncUI();
+  }
+
   function pushStateToCloud() {
     if (!cloudUser || !firebaseDb) return;
-    firebaseDb.collection('users').doc(cloudUser.uid).set(state).catch(function(e) {
+    firebaseDb.collection('users').doc(cloudUser.uid).set(state).then(function() {
+      markSynced();
+    }).catch(function(e) {
       console.error('Cloud sync failed', e);
     });
   }
@@ -1091,6 +1101,7 @@
     syncDebtsToIndexedDB();
     syncEmployersToIndexedDB();
     renderAll();
+    markSynced();
   }
 
   function detachCloudListener() {
@@ -1106,8 +1117,9 @@
           confirmAction('נמצאו נתונים שמורים בענן מהחשבון שלך. לטעון אותם ולהחליף את הנתונים במכשיר הזה?', function() {
             applyIncomingCloudState(snap.data());
           });
+        } else {
+          markSynced();
         }
-        // אם הנתונים כבר זהים (המכשיר כבר מסונכרן), אין צורך לשאול שוב
       } else {
         pushStateToCloud();
       }
@@ -1124,7 +1136,7 @@
     var signInBtn = document.getElementById('cloudSignInBtn');
     var signOutBtn = document.getElementById('cloudSignOutBtn');
     if (cloudUser) {
-      statusEl.textContent = 'מחובר כ-' + cloudUser.email;
+      statusEl.textContent = 'מחובר כ-' + cloudUser.email + (lastSyncTime ? (' · סונכרן לאחרונה: ' + formatSyncTime(lastSyncTime)) : ' · מסתנכרן...');
       signInBtn.style.display = 'none';
       signOutBtn.style.display = 'inline-block';
     } else {
@@ -1155,9 +1167,17 @@
   document.getElementById('cloudSignOutBtn').addEventListener('click', doSignOut);
 
   // ---------- Account avatar widget (quick access, account switching) ----------
+  function formatSyncTime(d) {
+    var today = new Date();
+    var isToday = d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate();
+    var time = d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+    return isToday ? time : (d.toLocaleDateString('he-IL') + ' ' + time);
+  }
+
   function updateAccountWidget() {
     var avatarBtn = document.getElementById('accountAvatarBtn');
     var infoEl = document.getElementById('accountInfo');
+    var syncLineEl = document.getElementById('accountSyncLine');
     var signInItem = document.getElementById('accountSignInItem');
     var switchItem = document.getElementById('accountSwitchItem');
     var signOutItem = document.getElementById('accountSignOutItem');
@@ -1168,6 +1188,8 @@
       if (!cloudUser.photoURL) avatarBtn.textContent = '👤';
       infoEl.textContent = (cloudUser.displayName || '') + '\n' + cloudUser.email;
       infoEl.style.whiteSpace = 'pre-line';
+      syncLineEl.style.display = 'block';
+      syncLineEl.textContent = lastSyncTime ? ('☁️ סונכרן לאחרונה: ' + formatSyncTime(lastSyncTime)) : '☁️ מסתנכרן...';
       signInItem.style.display = 'none';
       switchItem.style.display = 'block';
       signOutItem.style.display = 'block';
@@ -1175,6 +1197,7 @@
       avatarBtn.style.backgroundImage = 'none';
       avatarBtn.textContent = '👤';
       infoEl.textContent = 'לא מחובר';
+      syncLineEl.style.display = 'none';
       signInItem.style.display = 'block';
       switchItem.style.display = 'none';
       signOutItem.style.display = 'none';
