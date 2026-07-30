@@ -186,6 +186,8 @@
   }
   .settings-group-title:first-child { margin-top: 0; }
 
+  .zoomable-chart { cursor: zoom-in; }
+
   .form-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -781,7 +783,7 @@
     <div class="card">
       <h2>📈 מגמת יתרה לאורך זמן</h2>
       <div style="margin-top:8px;">
-        <canvas id="balanceTrendChart" height="90"></canvas>
+        <canvas id="balanceTrendChart" class="zoomable-chart" height="90"></canvas>
       </div>
     </div>
 
@@ -789,7 +791,7 @@
       <h2>🥧 פילוח הוצאות לפי קטגוריה (לחודש הנבחר)</h2>
       <div class="list" id="categoryBreakdownList"></div>
       <div style="max-width:320px; margin:16px auto 0;">
-        <canvas id="categoryChart"></canvas>
+        <canvas id="categoryChart" class="zoomable-chart"></canvas>
       </div>
     </div>
 
@@ -973,6 +975,17 @@
       <button class="btn secondary" id="paymentCancel">ביטול</button>
       <button class="btn" id="paymentConfirm">אישור תשלום</button>
     </div>
+  </div>
+</div>
+
+<!-- מודל הגדלת גרף -->
+<div id="chartZoomOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.75); align-items:center; justify-content:center; z-index:1000;">
+  <div class="card" style="max-width:min(700px, 92vw); width:100%;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <h2 id="chartZoomTitle" style="margin:0;"></h2>
+      <button class="btn secondary" id="chartZoomClose">✕</button>
+    </div>
+    <canvas id="chartZoomCanvas"></canvas>
   </div>
 </div>
 
@@ -1398,6 +1411,33 @@
     okBtn.addEventListener('click', okHandler);
     cancelBtn.addEventListener('click', cancelHandler);
   }
+
+  // ---------- Chart zoom modal ----------
+  var chartZoomInstance = null;
+
+  function closeChartZoom() {
+    if (chartZoomInstance) { chartZoomInstance.destroy(); chartZoomInstance = null; }
+    document.getElementById('chartZoomOverlay').style.display = 'none';
+  }
+
+  function openChartZoom(title, config) {
+    if (!config) return;
+    document.getElementById('chartZoomTitle').textContent = title;
+    document.getElementById('chartZoomOverlay').style.display = 'flex';
+    if (chartZoomInstance) { chartZoomInstance.destroy(); chartZoomInstance = null; }
+    chartZoomInstance = new Chart(document.getElementById('chartZoomCanvas'), config);
+  }
+
+  document.getElementById('chartZoomClose').addEventListener('click', closeChartZoom);
+  document.getElementById('chartZoomOverlay').addEventListener('click', function(e) {
+    if (e.target.id === 'chartZoomOverlay') closeChartZoom();
+  });
+  document.getElementById('balanceTrendChart').addEventListener('click', function() {
+    openChartZoom('📈 מגמת יתרה לאורך זמן', buildBalanceTrendConfig());
+  });
+  document.getElementById('categoryChart').addEventListener('click', function() {
+    openChartZoom('🥧 פילוח הוצאות לפי קטגוריה', buildCategoryChartConfig(lastCategoryCats, lastCategoryGroups));
+  });
 
   // ---------- Tabs ----------
   var tabButtons = document.querySelectorAll('.tab-btn');
@@ -2029,16 +2069,13 @@
   // ---------- Balance trend chart (running balance by month, based on tx history) ----------
   var balanceTrendChartInstance = null;
 
-  function renderBalanceTrend() {
-    var canvas = document.getElementById('balanceTrendChart');
-    if (!canvas) return;
+  function buildBalanceTrendConfig() {
+    if (typeof Chart === 'undefined') return null;
 
     var monthSet = {};
     state.tx.forEach(function(t) { if (t.date) monthSet[t.date.slice(0, 7)] = true; });
     var months = Object.keys(monthSet).sort();
-
-    if (balanceTrendChartInstance) { balanceTrendChartInstance.destroy(); balanceTrendChartInstance = null; }
-    if (typeof Chart === 'undefined' || months.length === 0) return;
+    if (months.length === 0) return null;
 
     var cumulative = 0;
     var cumulativeByMonth = months.map(function(mk) {
@@ -2057,7 +2094,7 @@
       return MONTH_NAMES[m].slice(0, 3) + ' ' + y.slice(2);
     });
 
-    balanceTrendChartInstance = new Chart(canvas, {
+    return {
       type: 'line',
       data: {
         labels: labels,
@@ -2079,11 +2116,22 @@
           y: { ticks: { color: '#e8ecf5' } }
         }
       }
-    });
+    };
+  }
+
+  function renderBalanceTrend() {
+    var canvas = document.getElementById('balanceTrendChart');
+    if (!canvas) return;
+    if (balanceTrendChartInstance) { balanceTrendChartInstance.destroy(); balanceTrendChartInstance = null; }
+    var config = buildBalanceTrendConfig();
+    if (!config) return;
+    balanceTrendChartInstance = new Chart(canvas, config);
   }
 
   // ---------- Category breakdown (expenses) + budget progress + pie chart ----------
   var categoryChartInstance = null;
+  var lastCategoryCats = [];
+  var lastCategoryGroups = {};
 
   function renderCategoryBreakdown(monthKey) {
     var monthExpenseTx = state.tx.filter(function(t) { return t.kind === 'out' && t.date && t.date.slice(0, 7) === monthKey; });
@@ -2111,12 +2159,19 @@
       }).join('');
     }
 
+    lastCategoryCats = cats;
+    lastCategoryGroups = groups;
+
     var canvas = document.getElementById('categoryChart');
     if (categoryChartInstance) { categoryChartInstance.destroy(); categoryChartInstance = null; }
-    if (typeof Chart === 'undefined' || !canvas || cats.length === 0) return;
+    var config = buildCategoryChartConfig(cats, groups);
+    if (canvas && config) categoryChartInstance = new Chart(canvas, config);
+  }
 
+  function buildCategoryChartConfig(cats, groups) {
+    if (typeof Chart === 'undefined' || cats.length === 0) return null;
     var palette = ['#6366f1', '#34d399', '#f87171', '#fbbf24', '#818cf8', '#f472b6', '#22d3ee', '#a3e635'];
-    categoryChartInstance = new Chart(canvas, {
+    return {
       type: 'pie',
       data: {
         labels: cats,
@@ -2128,7 +2183,7 @@
       options: {
         plugins: { legend: { labels: { color: '#e8ecf5' } } }
       }
-    });
+    };
   }
 
   // ---------- Excel export ----------
