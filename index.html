@@ -779,6 +779,13 @@
     </div>
 
     <div class="card">
+      <h2>📈 מגמת יתרה לאורך זמן</h2>
+      <div style="margin-top:8px;">
+        <canvas id="balanceTrendChart" height="90"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
       <h2>🥧 פילוח הוצאות לפי קטגוריה (לחודש הנבחר)</h2>
       <div class="list" id="categoryBreakdownList"></div>
       <div style="max-width:320px; margin:16px auto 0;">
@@ -2016,6 +2023,63 @@
       }).join('');
 
     renderCategoryBreakdown(monthKey);
+    renderBalanceTrend();
+  }
+
+  // ---------- Balance trend chart (running balance by month, based on tx history) ----------
+  var balanceTrendChartInstance = null;
+
+  function renderBalanceTrend() {
+    var canvas = document.getElementById('balanceTrendChart');
+    if (!canvas) return;
+
+    var monthSet = {};
+    state.tx.forEach(function(t) { if (t.date) monthSet[t.date.slice(0, 7)] = true; });
+    var months = Object.keys(monthSet).sort();
+
+    if (balanceTrendChartInstance) { balanceTrendChartInstance.destroy(); balanceTrendChartInstance = null; }
+    if (typeof Chart === 'undefined' || months.length === 0) return;
+
+    var cumulative = 0;
+    var cumulativeByMonth = months.map(function(mk) {
+      var monthTx = state.tx.filter(function(t) { return t.date && t.date.slice(0, 7) === mk; });
+      var net = monthTx.reduce(function(s, t) { return s + (t.kind === 'in' ? t.amount : -t.amount); }, 0);
+      cumulative += net;
+      return cumulative;
+    });
+    // Anchor the last point to the actual (manually-editable) total balance,
+    // so the trend line reflects reality even if the user adjusted the balance directly.
+    var offset = state.totalBalance - cumulativeByMonth[cumulativeByMonth.length - 1];
+    var displayBalances = cumulativeByMonth.map(function(v) { return v + offset; });
+
+    var labels = months.map(function(mk) {
+      var y = mk.slice(0, 4), m = parseInt(mk.slice(5, 7), 10) - 1;
+      return MONTH_NAMES[m].slice(0, 3) + ' ' + y.slice(2);
+    });
+
+    balanceTrendChartInstance = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'יתרה',
+          data: displayBalances,
+          borderColor: '#6366f1',
+          backgroundColor: 'rgba(99,102,241,0.15)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 3
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#e8ecf5' } },
+          y: { ticks: { color: '#e8ecf5' } }
+        }
+      }
+    });
   }
 
   // ---------- Category breakdown (expenses) + budget progress + pie chart ----------
