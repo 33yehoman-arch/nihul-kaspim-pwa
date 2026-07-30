@@ -1014,6 +1014,7 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     syncDebtsToIndexedDB();
     syncEmployersToIndexedDB();
+    syncSummaryToIndexedDB();
     pushStateToCloud();
   }
 
@@ -1021,14 +1022,16 @@
   var DB_NAME = 'financeAppDB';
   var DEBTS_STORE = 'debts';
   var EMPLOYERS_STORE = 'employers';
+  var SUMMARY_STORE = 'summary';
 
   function withStore(storeName, mode, callback) {
     if (!('indexedDB' in window)) return;
-    var req = indexedDB.open(DB_NAME, 2);
+    var req = indexedDB.open(DB_NAME, 3);
     req.onupgradeneeded = function() {
       var db = req.result;
       if (!db.objectStoreNames.contains(DEBTS_STORE)) db.createObjectStore(DEBTS_STORE);
       if (!db.objectStoreNames.contains(EMPLOYERS_STORE)) db.createObjectStore(EMPLOYERS_STORE);
+      if (!db.objectStoreNames.contains(SUMMARY_STORE)) db.createObjectStore(SUMMARY_STORE);
     };
     req.onsuccess = function() {
       var db = req.result;
@@ -1051,6 +1054,17 @@
     var totals = getEmployerTotalsForMonth(getPrevMonthKey());
     withStore(EMPLOYERS_STORE, 'readwrite', function(store) {
       store.put(totals, 'current');
+    });
+  }
+
+  function syncSummaryToIndexedDB() {
+    var today = new Date();
+    var monthKey = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
+    var monthTx = state.tx.filter(function(t) { return t.date && t.date.slice(0, 7) === monthKey; });
+    var income = monthTx.filter(function(t) { return t.kind === 'in'; }).reduce(function(s, t) { return s + t.amount; }, 0);
+    var expense = monthTx.filter(function(t) { return t.kind === 'out'; }).reduce(function(s, t) { return s + t.amount; }, 0);
+    withStore(SUMMARY_STORE, 'readwrite', function(store) {
+      store.put({ monthKey: monthKey, income: income, expense: expense, balance: income - expense }, 'current');
     });
   }
 
@@ -1101,6 +1115,7 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     syncDebtsToIndexedDB();
     syncEmployersToIndexedDB();
+    syncSummaryToIndexedDB();
     renderAll();
     markSynced();
   }
@@ -1112,6 +1127,7 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     syncDebtsToIndexedDB();
     syncEmployersToIndexedDB();
+    syncSummaryToIndexedDB();
     lastSyncTime = null;
     renderAll();
   }
@@ -1377,15 +1393,34 @@
 
   // ---------- Tabs ----------
   var tabButtons = document.querySelectorAll('.tab-btn');
+
+  function switchToTab(tabName) {
+    var targetBtn = document.querySelector('.tab-btn[data-tab="' + tabName + '"]');
+    var targetContent = document.getElementById('tab-' + tabName);
+    if (!targetBtn || !targetContent) return;
+    tabButtons.forEach(function(b) { b.classList.remove('active'); });
+    document.querySelectorAll('.tab-content').forEach(function(t) { t.classList.remove('active'); });
+    targetBtn.classList.add('active');
+    targetContent.classList.add('active');
+    if (tabName === 'summary') renderSummary();
+  }
+
   tabButtons.forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      tabButtons.forEach(function(b) { b.classList.remove('active'); });
-      document.querySelectorAll('.tab-content').forEach(function(t) { t.classList.remove('active'); });
-      btn.classList.add('active');
-      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-      if (btn.dataset.tab === 'summary') renderSummary();
-    });
+    btn.addEventListener('click', function() { switchToTab(btn.dataset.tab); });
   });
+
+  // אם נפתח דרך התראה (קליק על תזכורת סיכום חודשי), נעבור ישר ללשונית הרלוונטית
+  var urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('tab')) {
+    switchToTab(urlParams.get('tab'));
+  }
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', function(event) {
+      if (event.data && event.data.type === 'OPEN_TAB' && event.data.tab) {
+        switchToTab(event.data.tab);
+      }
+    });
+  }
 
   // ---------- Transactions ----------
   var txKind = 'out';
@@ -2365,6 +2400,7 @@
   renderAll();
   syncDebtsToIndexedDB();
   syncEmployersToIndexedDB();
+  syncSummaryToIndexedDB();
 
   // ---------- PWA / Service Worker + notifications ----------
   var notifStatusEl = document.getElementById('notifStatus');

@@ -39,14 +39,16 @@ self.addEventListener('fetch', function(event) {
 var DB_NAME = 'financeAppDB';
 var DEBTS_STORE = 'debts';
 var EMPLOYERS_STORE = 'employers';
+var SUMMARY_STORE = 'summary';
 
 function openDB() {
   return new Promise(function(resolve, reject) {
-    var req = indexedDB.open(DB_NAME, 2);
+    var req = indexedDB.open(DB_NAME, 3);
     req.onupgradeneeded = function() {
       var db = req.result;
       if (!db.objectStoreNames.contains(DEBTS_STORE)) db.createObjectStore(DEBTS_STORE);
       if (!db.objectStoreNames.contains(EMPLOYERS_STORE)) db.createObjectStore(EMPLOYERS_STORE);
+      if (!db.objectStoreNames.contains(SUMMARY_STORE)) db.createObjectStore(SUMMARY_STORE);
     };
     req.onsuccess = function() { resolve(req.result); };
     req.onerror = function() { reject(req.error); };
@@ -94,10 +96,33 @@ function notifyEmployers() {
   });
 }
 
+function notifyMonthSummary() {
+  return getStoreCurrent(SUMMARY_STORE).then(function(summary) {
+    if (!summary) return;
+    var data = Array.isArray(summary) ? null : summary;
+    if (!data) return;
+    return self.registration.showNotification('📊 סיכום החודש מוכן', {
+      body: 'הכנסות: ₪' + data.income + ' · הוצאות: ₪' + data.expense + ' · יתרה: ₪' + data.balance + ' - הקישו לפרטים',
+      icon: 'icon.svg',
+      badge: 'icon.svg',
+      tag: 'month-summary-reminder',
+      renotify: true
+    });
+  });
+}
+
+function isLastDayOfMonth(date) {
+  var lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  return date.getDate() === lastDay;
+}
+
 function checkAndNotify() {
-  var day = new Date().getDate();
-  if (day < 8 || day > 15) return Promise.resolve();
-  return Promise.all([notifyDebts(), notifyEmployers()]);
+  var now = new Date();
+  var day = now.getDate();
+  var tasks = [];
+  if (day >= 8 && day <= 15) tasks.push(notifyDebts(), notifyEmployers());
+  if (isLastDayOfMonth(now)) tasks.push(notifyMonthSummary());
+  return Promise.all(tasks);
 }
 
 // Best-effort background trigger. Actual firing interval/timing is decided
@@ -117,12 +142,19 @@ self.addEventListener('message', function(event) {
 
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
+  var tab = event.notification.tag === 'month-summary-reminder' ? 'summary' : null;
   event.waitUntil(
     self.clients.matchAll({ type: 'window' }).then(function(list) {
       for (var i = 0; i < list.length; i++) {
-        if ('focus' in list[i]) return list[i].focus();
+        var client = list[i];
+        if ('focus' in client) {
+          if (tab) client.postMessage({ type: 'OPEN_TAB', tab: tab });
+          return client.focus();
+        }
       }
-      if (self.clients.openWindow) return self.clients.openWindow('./index.html');
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(tab ? ('./index.html?tab=' + tab) : './index.html');
+      }
     })
   );
 });
