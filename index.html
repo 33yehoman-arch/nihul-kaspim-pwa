@@ -909,14 +909,11 @@
       </div>
     </div>
 
-    <h3 class="settings-group-title">💾 גיבוי ושחזור נתונים</h3>
+    <h3 class="settings-group-title">💾 ייצוא נתונים</h3>
     <div class="card">
-      <p style="color:var(--text-dim); font-size:.9rem; margin-top:0;">כל הנתונים נשמרים במכשיר שלך בלבד (localStorage). מומלץ לייצא גיבוי מדי פעם.</p>
+      <p style="color:var(--text-dim); font-size:.9rem; margin-top:0;">הנתונים מגובים אוטומטית דרך חשבון Google (בכרטיס "חשבון וסנכרון" למעלה). ניתן גם לייצא לאקסל לצפייה/ניתוח.</p>
       <div class="backup-actions">
-        <button class="btn" id="exportBtn">📤 ייצוא גיבוי (JSON)</button>
-        <button class="btn secondary" id="importBtn">📥 שחזור מגיבוי</button>
         <button class="btn secondary" id="exportExcelBtn">📊 ייצוא לאקסל</button>
-        <input type="file" id="importFile" accept="application/json" style="display:none;">
       </div>
     </div>
 
@@ -2070,19 +2067,7 @@
     });
   }
 
-  // ---------- Backup / restore ----------
-  document.getElementById('exportBtn').addEventListener('click', function() {
-    var blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = 'גיבוי-כספים-' + todayStr() + '.json';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  });
-
+  // ---------- Excel export ----------
   document.getElementById('exportExcelBtn').addEventListener('click', function() {
     if (typeof XLSX === 'undefined') { alert('הספרייה לייצוא לאקסל לא נטענה (נדרש חיבור לאינטרנט)'); return; }
     exportToExcel();
@@ -2173,31 +2158,6 @@
 
     XLSX.writeFile(wb, 'נתונים-כספים-' + todayStr() + '.xlsx');
   }
-
-  document.getElementById('importBtn').addEventListener('click', function() {
-    document.getElementById('importFile').click();
-  });
-
-  document.getElementById('importFile').addEventListener('change', function(e) {
-    var file = e.target.files[0];
-    if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function() {
-      try {
-        var parsed = JSON.parse(reader.result);
-        confirmAction('שחזור מגיבוי יחליף את כל הנתונים הקיימים. להמשיך?', function() {
-          state = mergeStateWithDefaults(parsed);
-          saveData();
-          renderAll();
-          alert('השחזור הושלם בהצלחה');
-        });
-      } catch (err) {
-        alert('קובץ לא תקין');
-      }
-      e.target.value = '';
-    };
-    reader.readAsText(file);
-  });
 
   // ---------- Monthly budgets per category ----------
   function renderBudgetInputs() {
