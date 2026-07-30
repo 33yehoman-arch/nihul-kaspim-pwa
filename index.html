@@ -925,6 +925,7 @@
       </p>
       <div class="backup-actions">
         <button class="btn" id="enableNotifBtn">🔔 אפשר התראות</button>
+        <button class="btn secondary" id="testNotifBtn">🧪 שלח התראת ניסיון</button>
         <span id="notifStatus" style="color:var(--text-dim); font-size:.85rem; align-self:center;"></span>
       </div>
     </div>
@@ -2392,6 +2393,24 @@
       if (reg.active) reg.active.postMessage({ type: 'CHECK_DEBT_REMINDER' });
     }).catch(function() {});
   }
+
+  document.getElementById('testNotifBtn').addEventListener('click', function() {
+    if (!('Notification' in window)) { alert('הדפדפן הזה לא תומך בהתראות'); return; }
+    if (Notification.permission !== 'granted') {
+      alert('קודם צריך ללחוץ על "אפשר התראות" ולאשר בדפדפן/במכשיר');
+      return;
+    }
+    if (!('serviceWorker' in navigator)) { alert('הדפדפן הזה לא תומך בהתראות רקע'); return; }
+    navigator.serviceWorker.ready.then(function(reg) {
+      reg.showNotification('🧪 התראת ניסיון', {
+        body: 'אם רואים את זה - התראות עובדות תקין במכשיר הזה!',
+        icon: 'icon.svg',
+        badge: 'icon.svg',
+        tag: 'test-notification',
+        renotify: true
+      });
+    });
+  });
 
   if ('serviceWorker' in navigator && window.location.protocol !== 'file:') {
     navigator.serviceWorker.register('sw.js').then(function(reg) {
