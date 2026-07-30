@@ -1119,6 +1119,42 @@
     if (unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
   }
 
+  // ---------- Automated inbox (e.g. PayBox notification automation) ----------
+  var unsubscribeInbox = null;
+
+  function detachInboxListener() {
+    if (unsubscribeInbox) { unsubscribeInbox(); unsubscribeInbox = null; }
+  }
+
+  function attachInboxListener(userId) {
+    detachInboxListener();
+    var inboxRef = firebaseDb.collection('users').doc(userId).collection('inbox');
+    unsubscribeInbox = inboxRef.onSnapshot(function(snap) {
+      snap.docChanges().forEach(function(change) {
+        if (change.type !== 'added') return;
+        var doc = change.doc;
+        var data = doc.data();
+        var amount = Math.abs(parseFloat(data.amount)) || 0;
+        if (amount > 0) {
+          var newTx = {
+            id: uid(), kind: 'out', amount: amount,
+            desc: data.desc || 'הוצאה מ-PayBox',
+            cat: data.cat || 'PayBox אוטומטי',
+            date: data.date || todayStr()
+          };
+          state.tx.push(newTx);
+          applyTxToBalance(newTx, 1);
+          saveData();
+          renderTx();
+          renderReminder();
+          renderEmployerReminder();
+          renderQuickStats();
+        }
+        doc.ref.delete().catch(function(e) { console.error('Failed to clear inbox doc', e); });
+      });
+    }, function(e) { console.error('Inbox listener failed', e); });
+  }
+
   function attachCloudListener(uid) {
     detachCloudListener();
     var docRef = firebaseDb.collection('users').doc(uid);
@@ -1253,8 +1289,10 @@
         updateCloudSyncUI();
         if (user) {
           attachCloudListener(user.uid);
+          attachInboxListener(user.uid);
         } else {
           detachCloudListener();
+          detachInboxListener();
           if (wasSignedIn) resetLocalStateOnSignOut();
         }
       });
