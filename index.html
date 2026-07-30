@@ -178,6 +178,14 @@
   }
   .card h2 { margin: 0 0 14px; font-size: 1.1rem; color: var(--accent-2); }
 
+  .settings-group-title {
+    margin: 20px 0 8px;
+    font-size: .95rem;
+    font-weight: 700;
+    color: var(--text-dim);
+  }
+  .settings-group-title:first-child { margin-top: 0; }
+
   .form-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -541,7 +549,7 @@
       <button class="tab-btn" data-tab="debts"><span class="icon">🤝</span><span class="label-text">חובות</span></button>
       <button class="tab-btn" data-tab="summary"><span class="icon">📊</span><span class="label-text">סיכום חודשי</span></button>
       <button class="tab-btn" data-tab="advanced"><span class="icon">🎯</span><span class="label-text">תקציב וחיסכון</span></button>
-      <button class="tab-btn" data-tab="settings"><span class="icon">⚙️</span><span class="label-text">גיבוי והתראות</span></button>
+      <button class="tab-btn" data-tab="settings"><span class="icon">⚙️</span><span class="label-text">הגדרות</span></button>
     </nav>
 
     <div class="sidebar-footer">
@@ -868,11 +876,11 @@
     </div>
   </section>
 
-  <!-- TAB: גיבוי -->
+  <!-- TAB: הגדרות -->
   <section id="tab-settings" class="tab-content">
+    <h3 class="settings-group-title">🎨 עיצוב ותצוגה</h3>
     <div class="card">
-      <h2>🎨 ערכת נושא</h2>
-      <p style="color:var(--text-dim); font-size:.9rem;">בחר צבע מבטא לאפליקציה.</p>
+      <p style="color:var(--text-dim); font-size:.9rem; margin-top:0;">בחר צבע מבטא לאפליקציה.</p>
       <div class="theme-swatches" id="themeSwatches">
         <button type="button" class="theme-swatch" data-theme="default" style="background:linear-gradient(135deg,#6366f1,#818cf8);" title="ברירת מחדל"></button>
         <button type="button" class="theme-swatch" data-theme="blue" style="background:linear-gradient(135deg,#0ea5e9,#38bdf8);" title="כחול אוקיינוס"></button>
@@ -885,19 +893,15 @@
         <input type="checkbox" id="lightModeToggle">
         <span>☀️ מצב בהיר</span>
       </label>
-    </div>
-
-    <div class="card">
-      <h2>🧭 תצוגת ניווט</h2>
       <label class="toggle-row">
         <input type="checkbox" id="hideSidebarToggle">
-        <span>הסתר את סרגל הניווט הצדדי (יופיע כפתור צף להחזרתו)</span>
+        <span>🧭 הסתר את סרגל הניווט הצדדי (יופיע כפתור צף להחזרתו)</span>
       </label>
     </div>
 
+    <h3 class="settings-group-title">☁️ חשבון וסנכרון</h3>
     <div class="card">
-      <h2>☁️ סנכרון בין מכשירים</h2>
-      <p style="color:var(--text-dim); font-size:.9rem;">התחבר עם חשבון Google כדי לסנכרן את הנתונים אוטומטית בין כל המכשירים שמחוברים לאותו חשבון. בלי התחברות, הנתונים נשמרים רק במכשיר הזה.</p>
+      <p style="color:var(--text-dim); font-size:.9rem; margin-top:0;">התחבר עם חשבון Google כדי לסנכרן את הנתונים אוטומטית בין כל המכשירים שמחוברים לאותו חשבון. בלי התחברות, הנתונים נשמרים רק במכשיר הזה.</p>
       <p id="cloudSyncStatus" style="font-weight:600;">לא מחובר</p>
       <div class="backup-actions">
         <button class="btn" id="cloudSignInBtn">🔵 התחבר עם Google</button>
@@ -905,9 +909,9 @@
       </div>
     </div>
 
+    <h3 class="settings-group-title">💾 גיבוי ושחזור נתונים</h3>
     <div class="card">
-      <h2>גיבוי ושחזור נתונים</h2>
-      <p style="color:var(--text-dim); font-size:.9rem;">כל הנתונים נשמרים במכשיר שלך בלבד (localStorage). מומלץ לייצא גיבוי מדי פעם.</p>
+      <p style="color:var(--text-dim); font-size:.9rem; margin-top:0;">כל הנתונים נשמרים במכשיר שלך בלבד (localStorage). מומלץ לייצא גיבוי מדי פעם.</p>
       <div class="backup-actions">
         <button class="btn" id="exportBtn">📤 ייצוא גיבוי (JSON)</button>
         <button class="btn secondary" id="importBtn">📥 שחזור מגיבוי</button>
@@ -916,12 +920,12 @@
       </div>
     </div>
 
+    <h3 class="settings-group-title">🔔 התראות</h3>
     <div class="card">
-      <h2>התראות (PWA)</h2>
-      <p style="color:var(--text-dim); font-size:.9rem;">
+      <p style="color:var(--text-dim); font-size:.9rem; margin-top:0;">
         אם האפליקציה מותקנת כ-PWA (מוגשת דרך שרת/HTTPS ולא נפתחת כקובץ ישירות),
-        ניתן לאפשר התראות כדי לקבל תזכורת על חובות פתוחים בין ה-8 ל-15 לחודש.
-        התראה ברקע כשהאפליקציה סגורה תלויה בתמיכת הדפדפן/המכשיר ואינה מובטחת להגיע בדיוק ב-10 לחודש.
+        ניתן לאפשר התראות כדי לקבל תזכורת על חובות פתוחים בין ה-8 ל-15 לחודש, ותקציר בסוף כל חודש.
+        התראה ברקע כשהאפליקציה סגורה תלויה בתמיכת הדפדפן/המכשיר ואינה מובטחת להגיע בדיוק בתאריך.
       </p>
       <div class="backup-actions">
         <button class="btn" id="enableNotifBtn">🔔 אפשר התראות</button>
