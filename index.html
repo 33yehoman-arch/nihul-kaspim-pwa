@@ -1233,7 +1233,7 @@
     var pwd = document.getElementById('automationPassword').value;
     if (!cloudUser) { statusEl.textContent = 'צריך להתחבר עם Google קודם'; statusEl.style.color = 'var(--danger, red)'; return; }
     if (!pwd || pwd.length < 6) { statusEl.textContent = 'הסיסמה חייבת להכיל לפחות 6 תווים'; statusEl.style.color = 'var(--danger, red)'; return; }
-    var cred = firebase.auth.EmailAuthProvider.credential('paybox-automation@local', pwd);
+    var cred = firebase.auth.EmailAuthProvider.credential('paybox-automation@nihul-kaspim-sync.firebaseapp.com', pwd);
     firebaseAuth.currentUser.linkWithCredential(cred).then(function() {
       statusEl.textContent = 'חובר בהצלחה! אפשר להשתמש בסיסמה הזו ב-MacroDroid. ה-UID שלך: ' + cloudUser.uid;
       statusEl.style.color = 'var(--accent)';
