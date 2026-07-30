@@ -906,16 +906,6 @@
     </div>
 
     <div class="card">
-      <h2>🤖 חיבור אוטומציה חיצונית (למשל PayBox)</h2>
-      <p style="color:var(--text-dim); font-size:.9rem;">הגדרה חד-פעמית שמאפשרת לאוטומציה בפלאפון (כמו MacroDroid) להוסיף הוצאות אוטומטית לאפליקציה. יש להתחבר עם Google קודם, ולוודא ש-Email/Password הופעל ב-Firebase Console.</p>
-      <div class="backup-actions" style="flex-wrap:wrap; gap:8px;">
-        <input type="password" id="automationPassword" placeholder="בחר/י סיסמה לאוטומציה" style="padding:8px; border-radius:6px;">
-        <button class="btn" id="linkAutomationBtn">🔗 חבר אוטומציה לחשבון</button>
-      </div>
-      <p id="automationLinkStatus" style="font-size:.85rem; margin-top:6px;"></p>
-    </div>
-
-    <div class="card">
       <h2>גיבוי ושחזור נתונים</h2>
       <p style="color:var(--text-dim); font-size:.9rem;">כל הנתונים נשמרים במכשיר שלך בלבד (localStorage). מומלץ לייצא גיבוי מדי פעם.</p>
       <div class="backup-actions">
@@ -1129,42 +1119,6 @@
     if (unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
   }
 
-  // ---------- Automated inbox (e.g. PayBox notification automation) ----------
-  var unsubscribeInbox = null;
-
-  function detachInboxListener() {
-    if (unsubscribeInbox) { unsubscribeInbox(); unsubscribeInbox = null; }
-  }
-
-  function attachInboxListener(userId) {
-    detachInboxListener();
-    var inboxRef = firebaseDb.collection('users').doc(userId).collection('inbox');
-    unsubscribeInbox = inboxRef.onSnapshot(function(snap) {
-      snap.docChanges().forEach(function(change) {
-        if (change.type !== 'added') return;
-        var doc = change.doc;
-        var data = doc.data();
-        var amount = Math.abs(parseFloat(data.amount)) || 0;
-        if (amount > 0) {
-          var newTx = {
-            id: uid(), kind: 'out', amount: amount,
-            desc: data.desc || 'הוצאה מ-PayBox',
-            cat: data.cat || 'PayBox אוטומטי',
-            date: data.date || todayStr()
-          };
-          state.tx.push(newTx);
-          applyTxToBalance(newTx, 1);
-          saveData();
-          renderTx();
-          renderReminder();
-          renderEmployerReminder();
-          renderQuickStats();
-        }
-        doc.ref.delete().catch(function(e) { console.error('Failed to clear inbox doc', e); });
-      });
-    }, function(e) { console.error('Inbox listener failed', e); });
-  }
-
   function attachCloudListener(uid) {
     detachCloudListener();
     var docRef = firebaseDb.collection('users').doc(uid);
@@ -1227,27 +1181,6 @@
 
   document.getElementById('cloudSignInBtn').addEventListener('click', function() { startGoogleSignIn(false); });
   document.getElementById('cloudSignOutBtn').addEventListener('click', doSignOut);
-
-  document.getElementById('linkAutomationBtn').addEventListener('click', function() {
-    var statusEl = document.getElementById('automationLinkStatus');
-    var pwd = document.getElementById('automationPassword').value;
-    if (!cloudUser) { statusEl.textContent = 'צריך להתחבר עם Google קודם'; statusEl.style.color = 'var(--danger, red)'; return; }
-    if (!pwd || pwd.length < 6) { statusEl.textContent = 'הסיסמה חייבת להכיל לפחות 6 תווים'; statusEl.style.color = 'var(--danger, red)'; return; }
-    var cred = firebase.auth.EmailAuthProvider.credential('paybox-automation@nihul-kaspim-sync.firebaseapp.com', pwd);
-    firebaseAuth.currentUser.linkWithCredential(cred).then(function() {
-      statusEl.textContent = 'חובר בהצלחה! אפשר להשתמש בסיסמה הזו ב-MacroDroid. ה-UID שלך: ' + cloudUser.uid;
-      statusEl.style.color = 'var(--accent)';
-      document.getElementById('automationPassword').value = '';
-    }).catch(function(e) {
-      if (e && e.code === 'auth/provider-already-linked') {
-        statusEl.textContent = 'האוטומציה כבר מחוברת. ה-UID שלך: ' + cloudUser.uid;
-        statusEl.style.color = 'var(--accent)';
-      } else {
-        statusEl.textContent = 'שגיאה: ' + (e && e.message ? e.message : e);
-        statusEl.style.color = 'var(--danger, red)';
-      }
-    });
-  });
 
   // ---------- Account avatar widget (quick access, account switching) ----------
   function formatSyncTime(d) {
@@ -1320,10 +1253,8 @@
         updateCloudSyncUI();
         if (user) {
           attachCloudListener(user.uid);
-          attachInboxListener(user.uid);
         } else {
           detachCloudListener();
-          detachInboxListener();
           if (wasSignedIn) resetLocalStateOnSignOut();
         }
       });
