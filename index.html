@@ -692,6 +692,23 @@
 
     <div class="card">
       <h2>רישומי שעות</h2>
+      <div class="form-grid" style="margin-bottom:14px;">
+        <div>
+          <label>חיפוש</label>
+          <input type="text" id="hFilterSearch" placeholder="חיפוש לפי מקום/לקוח">
+        </div>
+        <div>
+          <label>מתאריך</label>
+          <input type="date" id="hFilterFrom">
+        </div>
+        <div>
+          <label>עד תאריך</label>
+          <input type="date" id="hFilterTo">
+        </div>
+        <div>
+          <button type="button" class="btn secondary" id="hFilterClear">נקה סינון</button>
+        </div>
+      </div>
       <div class="list" id="hoursList"></div>
     </div>
 
@@ -739,6 +756,15 @@
 
     <div class="card">
       <h2>חובות פתוחים</h2>
+      <div class="form-grid" style="margin-bottom:14px;">
+        <div>
+          <label>חיפוש</label>
+          <input type="text" id="dFilterSearch" placeholder="חיפוש לפי שם/הערה">
+        </div>
+        <div>
+          <button type="button" class="btn secondary" id="dFilterClear">נקה סינון</button>
+        </div>
+      </div>
       <div class="list" id="debtOpenList"></div>
     </div>
 
@@ -1689,13 +1715,40 @@
     renderHoursByClient();
   });
 
+  ['hFilterSearch', 'hFilterFrom', 'hFilterTo'].forEach(function(id) {
+    document.getElementById(id).addEventListener('input', renderHours);
+  });
+  document.getElementById('hFilterClear').addEventListener('click', function() {
+    document.getElementById('hFilterSearch').value = '';
+    document.getElementById('hFilterFrom').value = '';
+    document.getElementById('hFilterTo').value = '';
+    renderHours();
+  });
+
   function renderHours() {
     var list = document.getElementById('hoursList');
-    var items = state.hours.slice().sort(function(a, b) { return b.date.localeCompare(a.date) || 0; });
-    if (items.length === 0) {
+    var search = document.getElementById('hFilterSearch').value.trim().toLowerCase();
+    var fromDate = document.getElementById('hFilterFrom').value;
+    var toDate = document.getElementById('hFilterTo').value;
+
+    if (state.hours.length === 0) {
       list.innerHTML = '<div class="empty">אין רישומי שעות עדיין</div>';
       return;
     }
+
+    var items = state.hours.slice().sort(function(a, b) { return b.date.localeCompare(a.date) || 0; });
+    items = items.filter(function(h) {
+      if (search && (h.where || '').toLowerCase().indexOf(search) === -1) return false;
+      if (fromDate && h.date < fromDate) return false;
+      if (toDate && h.date > toDate) return false;
+      return true;
+    });
+
+    if (items.length === 0) {
+      list.innerHTML = '<div class="empty">אין רישומים תואמים לסינון</div>';
+      return;
+    }
+
     list.innerHTML = items.map(function(h) {
       var wage = h.hours * h.rate;
       return '<div class="row-item">' +
@@ -1837,16 +1890,30 @@
     renderQuickStats();
   });
 
+  ['dFilterSearch'].forEach(function(id) {
+    document.getElementById(id).addEventListener('input', renderDebts);
+  });
+  document.getElementById('dFilterClear').addEventListener('click', function() {
+    document.getElementById('dFilterSearch').value = '';
+    renderDebts();
+  });
+
   function renderDebts() {
     var openList = document.getElementById('debtOpenList');
     var paidList = document.getElementById('debtPaidList');
+    var search = document.getElementById('dFilterSearch').value.trim().toLowerCase();
 
-    var open = state.debts.filter(function(d) { return !d.paid; })
+    function matchesSearch(d) {
+      if (!search) return true;
+      return d.name.toLowerCase().indexOf(search) !== -1 || (d.note || '').toLowerCase().indexOf(search) !== -1;
+    }
+
+    var open = state.debts.filter(function(d) { return !d.paid && matchesSearch(d); })
       .sort(function(a, b) { return (a.due || '9999').localeCompare(b.due || '9999'); });
-    var paid = state.debts.filter(function(d) { return d.paid; });
+    var paid = state.debts.filter(function(d) { return d.paid && matchesSearch(d); });
 
     openList.innerHTML = open.length === 0
-      ? '<div class="empty">אין חובות פתוחים</div>'
+      ? '<div class="empty">' + (search ? 'אין חובות תואמים לסינון' : 'אין חובות פתוחים') + '</div>'
       : open.map(function(d) {
         return '<div class="row-item">' +
           '<div class="main">' +
