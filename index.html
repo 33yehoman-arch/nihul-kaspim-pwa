@@ -965,6 +965,17 @@
         <span id="notifStatus" style="color:var(--text-dim); font-size:.85rem; align-self:center;"></span>
       </div>
     </div>
+
+    <h3 class="settings-group-title">🗑️ איפוס נתונים</h3>
+    <div class="card">
+      <p style="color:var(--text-dim); font-size:.9rem; margin-top:0;">
+        מאפס את התנועות, היתרה הכוללת, יעד החיסכון והתקציבים בחזרה לאפס.
+        <strong>חובות ורישומי שעות עבודה לא יימחקו.</strong> פעולה זו אינה הפיכה.
+      </p>
+      <div class="backup-actions">
+        <button class="btn danger" id="resetMoneyBtn">🗑️ אפס נתוני כסף</button>
+      </div>
+    </div>
   </section>
 
   <footer class="app-footer">נתונים נשמרים מקומית בלבד • ללא שרת וללא אינטרנט</footer>
@@ -2595,6 +2606,18 @@
         tag: 'test-notification',
         renotify: true
       });
+    });
+  });
+
+  document.getElementById('resetMoneyBtn').addEventListener('click', function() {
+    confirmAction('לאפס את התנועות, היתרה הכוללת, יעד החיסכון והתקציבים? חובות ורישומי שעות עבודה יישארו. הפעולה אינה הפיכה.', function() {
+      state.tx = [];
+      state.totalBalance = 0;
+      state.savings = { target: 0, current: 0 };
+      state.budgets = {};
+      saveData();
+      renderAll();
+      alert('נתוני הכסף אופסו. חובות ושעות עבודה נשארו כפי שהיו.');
     });
   });
 
