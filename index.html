@@ -1081,15 +1081,17 @@
   var DEBTS_STORE = 'debts';
   var EMPLOYERS_STORE = 'employers';
   var SUMMARY_STORE = 'summary';
+  var NOTIFY_LOG_STORE = 'notifyLog';
 
   function withStore(storeName, mode, callback) {
     if (!('indexedDB' in window)) return;
-    var req = indexedDB.open(DB_NAME, 3);
+    var req = indexedDB.open(DB_NAME, 4);
     req.onupgradeneeded = function() {
       var db = req.result;
       if (!db.objectStoreNames.contains(DEBTS_STORE)) db.createObjectStore(DEBTS_STORE);
       if (!db.objectStoreNames.contains(EMPLOYERS_STORE)) db.createObjectStore(EMPLOYERS_STORE);
       if (!db.objectStoreNames.contains(SUMMARY_STORE)) db.createObjectStore(SUMMARY_STORE);
+      if (!db.objectStoreNames.contains(NOTIFY_LOG_STORE)) db.createObjectStore(NOTIFY_LOG_STORE);
     };
     req.onsuccess = function() {
       var db = req.result;

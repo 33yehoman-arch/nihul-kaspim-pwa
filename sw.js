@@ -40,15 +40,17 @@ var DB_NAME = 'financeAppDB';
 var DEBTS_STORE = 'debts';
 var EMPLOYERS_STORE = 'employers';
 var SUMMARY_STORE = 'summary';
+var NOTIFY_LOG_STORE = 'notifyLog';
 
 function openDB() {
   return new Promise(function(resolve, reject) {
-    var req = indexedDB.open(DB_NAME, 3);
+    var req = indexedDB.open(DB_NAME, 4);
     req.onupgradeneeded = function() {
       var db = req.result;
       if (!db.objectStoreNames.contains(DEBTS_STORE)) db.createObjectStore(DEBTS_STORE);
       if (!db.objectStoreNames.contains(EMPLOYERS_STORE)) db.createObjectStore(EMPLOYERS_STORE);
       if (!db.objectStoreNames.contains(SUMMARY_STORE)) db.createObjectStore(SUMMARY_STORE);
+      if (!db.objectStoreNames.contains(NOTIFY_LOG_STORE)) db.createObjectStore(NOTIFY_LOG_STORE);
     };
     req.onsuccess = function() { resolve(req.result); };
     req.onerror = function() { reject(req.error); };
@@ -66,47 +68,87 @@ function getStoreCurrent(storeName) {
   });
 }
 
+// ---------- Once-per-month de-duplication for reminder notifications ----------
+function currentMonthKey() {
+  var d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+function hasNotifiedThisMonth(tag) {
+  return openDB().then(function(db) {
+    return new Promise(function(resolve) {
+      var tx = db.transaction(NOTIFY_LOG_STORE, 'readonly');
+      var req = tx.objectStore(NOTIFY_LOG_STORE).get(tag);
+      req.onsuccess = function() { resolve(req.result === currentMonthKey()); };
+      req.onerror = function() { resolve(false); };
+    });
+  }).catch(function() { return false; });
+}
+
+function markNotified(tag) {
+  return openDB().then(function(db) {
+    return new Promise(function(resolve) {
+      var tx = db.transaction(NOTIFY_LOG_STORE, 'readwrite');
+      tx.objectStore(NOTIFY_LOG_STORE).put(currentMonthKey(), tag);
+      tx.oncomplete = function() { resolve(); };
+      tx.onerror = function() { resolve(); };
+    });
+  }).catch(function() {});
+}
+
 function notifyDebts() {
-  return getStoreCurrent(DEBTS_STORE).then(function(debts) {
-    if (!debts || debts.length === 0) return;
-    var total = debts.reduce(function(s, d) { return s + d.amount; }, 0);
-    var names = debts.map(function(d) { return d.name + ' (₪' + d.amount + ')'; }).join(', ');
-    return self.registration.showNotification('תזכורת ל-10 בחודש 💰', {
-      body: 'סה"כ ₪' + total + ' ממתין מ: ' + names,
-      icon: 'icon.svg',
-      badge: 'icon.svg',
-      tag: 'monthly-debt-reminder',
-      renotify: true
+  var tag = 'monthly-debt-reminder';
+  return hasNotifiedThisMonth(tag).then(function(already) {
+    if (already) return;
+    return getStoreCurrent(DEBTS_STORE).then(function(debts) {
+      if (!debts || debts.length === 0) return;
+      var total = debts.reduce(function(s, d) { return s + d.amount; }, 0);
+      var names = debts.map(function(d) { return d.name + ' (₪' + d.amount + ')'; }).join(', ');
+      return self.registration.showNotification('תזכורת ל-10 בחודש 💰', {
+        body: 'סה"כ ₪' + total + ' ממתין מ: ' + names,
+        icon: 'icon.svg',
+        badge: 'icon.svg',
+        tag: tag,
+        renotify: true
+      }).then(function() { return markNotified(tag); });
     });
   });
 }
 
 function notifyEmployers() {
-  return getStoreCurrent(EMPLOYERS_STORE).then(function(employers) {
-    if (!employers || employers.length === 0) return;
-    var total = employers.reduce(function(s, e) { return s + e.amount; }, 0);
-    var names = employers.map(function(e) { return e.name + ' (₪' + e.amount + ')'; }).join(', ');
-    return self.registration.showNotification('💼 תשלום מהמעסיקים על החודש שעבר', {
-      body: 'סה"כ ₪' + total + ' מ: ' + names,
-      icon: 'icon.svg',
-      badge: 'icon.svg',
-      tag: 'monthly-employer-reminder',
-      renotify: true
+  var tag = 'monthly-employer-reminder';
+  return hasNotifiedThisMonth(tag).then(function(already) {
+    if (already) return;
+    return getStoreCurrent(EMPLOYERS_STORE).then(function(employers) {
+      if (!employers || employers.length === 0) return;
+      var total = employers.reduce(function(s, e) { return s + e.amount; }, 0);
+      var names = employers.map(function(e) { return e.name + ' (₪' + e.amount + ')'; }).join(', ');
+      return self.registration.showNotification('💼 תשלום מהמעסיקים על החודש שעבר', {
+        body: 'סה"כ ₪' + total + ' מ: ' + names,
+        icon: 'icon.svg',
+        badge: 'icon.svg',
+        tag: tag,
+        renotify: true
+      }).then(function() { return markNotified(tag); });
     });
   });
 }
 
 function notifyMonthSummary() {
-  return getStoreCurrent(SUMMARY_STORE).then(function(summary) {
-    if (!summary) return;
-    var data = Array.isArray(summary) ? null : summary;
-    if (!data) return;
-    return self.registration.showNotification('📊 סיכום החודש מוכן', {
-      body: 'הכנסות: ₪' + data.income + ' · הוצאות: ₪' + data.expense + ' · יתרה: ₪' + data.balance + ' - הקישו לפרטים',
-      icon: 'icon.svg',
-      badge: 'icon.svg',
-      tag: 'month-summary-reminder',
-      renotify: true
+  var tag = 'month-summary-reminder';
+  return hasNotifiedThisMonth(tag).then(function(already) {
+    if (already) return;
+    return getStoreCurrent(SUMMARY_STORE).then(function(summary) {
+      if (!summary) return;
+      var data = Array.isArray(summary) ? null : summary;
+      if (!data) return;
+      return self.registration.showNotification('📊 סיכום החודש מוכן', {
+        body: 'הכנסות: ₪' + data.income + ' · הוצאות: ₪' + data.expense + ' · יתרה: ₪' + data.balance + ' - הקישו לפרטים',
+        icon: 'icon.svg',
+        badge: 'icon.svg',
+        tag: tag,
+        renotify: true
+      }).then(function() { return markNotified(tag); });
     });
   });
 }
