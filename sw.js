@@ -1,7 +1,7 @@
 'use strict';
 
-var CACHE_NAME = 'finance-app-v2';
-var CORE_ASSETS = ['./', './index.html', './manifest.json', './icon.svg', './icon-192.png', './icon-512.png'];
+var CACHE_NAME = 'finance-app-v3';
+var CORE_ASSETS = ['./', './index.html', './manifest.json', './icon.svg?v=2', './icon-192.png?v=2', './icon-512.png?v=2'];
 
 self.addEventListener('install', function(event) {
   self.skipWaiting();
